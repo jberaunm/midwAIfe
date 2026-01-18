@@ -1,0 +1,33 @@
+# Core Framework
+google-adk>=1.17.0
+litellm
+
+# LLM Provider
+anthropic>=0.30.0
+
+# Web Framework (for agent and webhook servers)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# HTTP Client
+httpx>=0.27.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0  # For HTML parsing (CAS authentication)
+
+# Data Validation
+pydantic>=2.10.0
+
+# Google Authentication and APIs
+google-auth>=2.15.0
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+
+# OAuth
+requests-oauthlib
+
+# Environment Variables
+python-dotenv
+
+# Database
+psycopg2-binary>=2.9.10

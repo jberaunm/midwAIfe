@@ -17,7 +17,7 @@ if SUPABASE_CONNECTION_STRING:
         'dsn': SUPABASE_CONNECTION_STRING,
         'sslmode': 'require'  # Supabase requires SSL
     }
-    print("🔌 Using Supabase connection")
+    print("Using Supabase connection")
 else:
     # Using local PostgreSQL - individual parameters
     DB_CONFIG = {
@@ -27,7 +27,7 @@ else:
         'user': os.getenv('POSTGRES_USER', 'postgres'),
         'password': os.getenv('POSTGRES_PASSWORD', 'postgres'),
     }
-    print("🔌 Using local PostgreSQL connection")
+    print("Using local PostgreSQL connection")
 
 # Create connection pool
 connection_pool: Optional[pool.SimpleConnectionPool] = None
