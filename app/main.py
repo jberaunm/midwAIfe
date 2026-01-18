@@ -235,7 +235,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://192.168.0.223:3000",
         os.getenv("FRONTEND_URL", ""),  # Production frontend URL from environment variable
     ],
     allow_credentials=True,
