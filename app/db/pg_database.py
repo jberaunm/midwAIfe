@@ -8,14 +8,26 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Database configuration
-DB_CONFIG = {
-    'host': os.getenv('POSTGRES_HOST', 'localhost'),
-    'port': int(os.getenv('POSTGRES_PORT', 5432)),
-    'database': os.getenv('POSTGRES_DATABASE', 'midwaife'),
-    'user': os.getenv('POSTGRES_USER', 'postgres'),
-    'password': os.getenv('POSTGRES_PASSWORD', 'postgres'),
-}
+# Check if using Supabase connection string or individual config
+SUPABASE_CONNECTION_STRING = os.getenv('SUPABASE_CONNECTION_STRING')
+
+if SUPABASE_CONNECTION_STRING:
+    # Using Supabase - connection string format
+    DB_CONFIG = {
+        'dsn': SUPABASE_CONNECTION_STRING,
+        'sslmode': 'require'  # Supabase requires SSL
+    }
+    print("🔌 Using Supabase connection")
+else:
+    # Using local PostgreSQL - individual parameters
+    DB_CONFIG = {
+        'host': os.getenv('POSTGRES_HOST', 'localhost'),
+        'port': int(os.getenv('POSTGRES_PORT', 5432)),
+        'database': os.getenv('POSTGRES_DATABASE', 'midwaife'),
+        'user': os.getenv('POSTGRES_USER', 'postgres'),
+        'password': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+    }
+    print("🔌 Using local PostgreSQL connection")
 
 # Create connection pool
 connection_pool: Optional[pool.SimpleConnectionPool] = None

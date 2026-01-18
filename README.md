@@ -50,10 +50,12 @@ A comprehensive pregnancy tracking application with personalized meal planning, 
 ## Getting Started
 
 ### Prerequisites
-- Docker and Docker Compose
+- Docker and Docker Compose (for local development)
 - Node.js 18+ (for local development)
 - Python 3.10+ (for local development)
-- PostgreSQL 15+ (if not using Docker)
+- **Database**: Choose one:
+  - PostgreSQL 15+ (local development)
+  - Supabase account (recommended for production)
 
 ### Installation
 
@@ -190,16 +192,39 @@ midwaife/
 ## Environment Variables
 
 ### Required
-- `POSTGRES_PASSWORD` - Database password
 - `ANTHROPIC_API_KEY` - Claude API key
 - `GOOGLE_API_KEY` - Google API key
 
-### Optional
+### Database (Choose One)
+
+**Option 1: Local PostgreSQL**
 - `POSTGRES_HOST` - Database host (default: localhost)
 - `POSTGRES_PORT` - Database port (default: 5432)
 - `POSTGRES_DATABASE` - Database name (default: midwaife)
 - `POSTGRES_USER` - Database user (default: postgres)
+- `POSTGRES_PASSWORD` - Database password
+
+**Option 2: Supabase (Recommended for Production)**
+- `SUPABASE_CONNECTION_STRING` - Full connection string from Supabase
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_KEY` - Supabase anon/public key
+
+### Optional
 - `NEXT_PUBLIC_API_URL` - Backend API URL (default: http://localhost:8000)
+
+## Migrating to Supabase
+
+To migrate from local PostgreSQL to Supabase:
+
+1. **Read the migration guide**: `SUPABASE_MIGRATION.md`
+2. **Run export script**: `python scripts/export_data.py`
+3. **Create Supabase project** at [supabase.com](https://supabase.com)
+4. **Apply schema** using Supabase SQL Editor
+5. **Import data**: `python scripts/import_data.py export_XXXXXX`
+6. **Verify**: `python scripts/verify_migration.py export_XXXXXX`
+7. **Update `.env`** with Supabase credentials
+
+See `scripts/README.md` for detailed instructions.
 
 ## Features in Detail
 

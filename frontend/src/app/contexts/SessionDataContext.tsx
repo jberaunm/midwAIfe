@@ -145,7 +145,8 @@ export function SessionDataProvider({ children, date, websocket }: SessionDataPr
       // Use specificDate if provided (for post-scheduling fetch), otherwise use current date prop
       const formattedDate = specificDate || date.toISOString().split('T')[0];
       console.log('🔄 Fetching data for date:', formattedDate);
-      const response = await fetch(`http://localhost:8000/api/session/${formattedDate}`);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_BASE_URL}/api/session/${formattedDate}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -189,8 +190,9 @@ export function SessionDataProvider({ children, date, websocket }: SessionDataPr
     try {
       const monday = getMondayOfWeek(new Date(date));
       const startDate = monday.toISOString().split('T')[0];
-      
-      const response = await fetch(`http://localhost:8000/api/weekly/${startDate}`);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+      const response = await fetch(`${API_BASE_URL}/api/weekly/${startDate}`);
       
       if (response.ok) {
         const data: WeeklyData = await response.json();

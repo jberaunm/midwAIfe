@@ -26,6 +26,9 @@ from daily_logs.routes import router as daily_logs_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
+# Dynamic port configuration for Render
+PORT = int(os.getenv('PORT', 8000))
+
 #
 # WebSocket Log Forwarding
 #
@@ -227,12 +230,13 @@ app.include_router(meals_router)
 app.include_router(users_router)
 app.include_router(agent_router)
 app.include_router(daily_logs_router)
-# Allow CORS for frontend dev server
+# Allow CORS for frontend dev server and production
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://192.168.0.223:3000"
+        "http://192.168.0.223:3000",
+        os.getenv("FRONTEND_URL", ""),  # Production frontend URL from environment variable
     ],
     allow_credentials=True,
     allow_methods=["*"],
