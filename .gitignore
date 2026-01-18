@@ -111,3 +111,7 @@ migrations/*.sql.bak
 backups/
 *.dump
 *.sql.gz
+
+# Deployment documentation (generated)
+RENDER_SETUP.md
+RENDER_DEPLOYMENT.md
