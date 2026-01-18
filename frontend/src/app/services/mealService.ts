@@ -13,7 +13,7 @@ export const foodItemsService = {
     const result = await query(
       'SELECT * FROM foods ORDER BY name'
     );
-    return result.rows.map(dbRowToFoodItem);
+    return result.rows.map(row => dbRowToFoodItem(row));
   },
 
   /**
@@ -24,7 +24,7 @@ export const foodItemsService = {
       'SELECT * FROM foods WHERE name ILIKE $1 ORDER BY name LIMIT 20',
       [`%${searchQuery}%`]
     );
-    return result.rows.map(dbRowToFoodItem);
+    return result.rows.map(row => dbRowToFoodItem(row));
   },
 
   /**
