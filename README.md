@@ -2,6 +2,8 @@
 
 A comprehensive pregnancy tracking application with personalized meal planning, nutrition tracking, and an AI companion powered by LLMs.
 
+<img width="1893" height="791" alt="image" src="https://github.com/user-attachments/assets/55b31288-30cd-4a41-8855-7029997ad249" />
+
 ## Features
 
 ### 🍎 Meal Planning
