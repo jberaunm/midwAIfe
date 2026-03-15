@@ -1,5 +1,20 @@
 services:
   - type: web
+    name: midwaife-litellm-proxy
+    env: python
+    region: frankfurt
+    rootDir: app
+    buildCommand: pip install litellm
+    startCommand: litellm --config proxy_config.yaml --port $PORT --host 0.0.0.0
+    envVars:
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PROXY_API_KEY
+        sync: false
+
+  - type: web
     name: midwaife-backend
     env: python
     region: frankfurt  # Closest to your Supabase eu-west-1 region
@@ -11,7 +26,9 @@ services:
         sync: false  # You'll need to add this manually in Render dashboard
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: GOOGLE_API_KEY
-        sync: false
       - key: FRONTEND_URL
+        sync: false
+      - key: LITELLM_PROXY_API_BASE
+        sync: false  # Set to https://midwaife-litellm-proxy.onrender.com
+      - key: PROXY_API_KEY
         sync: false

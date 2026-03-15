@@ -4,10 +4,7 @@ os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 from datetime import datetime, timedelta
 from google.adk.agents import LlmAgent
-from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools.agent_tool import AgentTool
-import warnings
 
 # Import tools
 from midwaife.tools.user_data_tools import create_user_tools
@@ -18,16 +15,19 @@ from midwaife.tools.user_data_tools import create_user_tools
 
 from dotenv import load_dotenv
 load_dotenv()
-api_key = os.getenv("ANTHROPIC_API_KEY")
+sk_my_secret_proxy_key = os.getenv("PROXY_API_KEY")
+
+os.environ["LITELLM_PROXY_API_BASE"] = os.getenv("LITELLM_PROXY_API_BASE", "http://127.0.0.1:4000")
+os.environ["LITELLM_PROXY_API_KEY"] = sk_my_secret_proxy_key
+
+LiteLlm.use_litellm_proxy = True
 
 # Create tools
 user_tools = create_user_tools()
 
 root_agent = LlmAgent(
-    model=LiteLlm(
-        model="anthropic/claude-3-5-haiku-20241022"
-    ),
-    name='midwAIfe',
+    model=LiteLlm(model="litellm_proxy/midwaife-model"),
+    name='root_agent',
     description="AI companion for pregnancy support",
     instruction="""
     You are midwAIfe, a supportive AI companion for pregnant women.
