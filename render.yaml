@@ -4,7 +4,7 @@ services:
     env: python
     region: frankfurt
     rootDir: app
-    buildCommand: pip install litellm
+    buildCommand: pip install -r proxy_requirements.txt
     startCommand: litellm --config proxy_config.yaml --port $PORT --host 0.0.0.0
     envVars:
       - key: MISTRAL_API_KEY
