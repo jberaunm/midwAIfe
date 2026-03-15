@@ -40,7 +40,7 @@ def calculate_pregnancy_week(due_date: str) -> int:
     return max(1, min(42, weeks_pregnant))
 
 
-def get_user_info_tool(user_id: Optional[str] = None) -> Dict[str, Any]:
+def get_user_info_tool() -> Dict[str, Any]:
     """
     Get user information including pregnancy details.
 
@@ -51,20 +51,15 @@ def get_user_info_tool(user_id: Optional[str] = None) -> Dict[str, Any]:
     - Dietary restrictions
     - Caffeine limit
 
-    Args:
-        user_id: User ID (optional, will be retrieved from session context if not provided)
-
     Returns:
         Dictionary with user information
     """
-    # If no user_id provided, try to get from session context
-    if user_id is None:
-        try:
-            from google.adk.sessions import get_current_session
-            session = get_current_session()
-            user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
-        except Exception:
-            user_id = "00000000-0000-0000-0000-000000000001"
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
     query = """
         SELECT
             first_name,
@@ -102,7 +97,7 @@ def get_user_info_tool(user_id: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
-def get_current_week_meals_tool(user_id: Optional[str] = None) -> Dict[str, Any]:
+def get_current_week_meals_tool() -> Dict[str, Any]:
     """
     Get all foods consumed during the current week.
 
@@ -112,20 +107,15 @@ def get_current_week_meals_tool(user_id: Optional[str] = None) -> Dict[str, Any]
     - Food names and colors
     - Rainbow color distribution
 
-    Args:
-        user_id: User ID (optional, will be retrieved from session context if not provided)
-
     Returns:
         Dictionary with current week's meals
     """
-    # If no user_id provided, try to get from session context
-    if user_id is None:
-        try:
-            from google.adk.sessions import get_current_session
-            session = get_current_session()
-            user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
-        except Exception:
-            user_id = "00000000-0000-0000-0000-000000000001"
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
     # Get the start of the current week (Monday)
     today = datetime.now()
     start_of_week = today - timedelta(days=today.weekday())
@@ -209,27 +199,22 @@ def get_current_week_meals_tool(user_id: Optional[str] = None) -> Dict[str, Any]
     }
 
 
-def get_rainbow_summary_tool(user_id: Optional[str] = None) -> Dict[str, Any]:
+def get_rainbow_summary_tool() -> Dict[str, Any]:
     """
     Get summary of rainbow colors consumed this week.
 
     This tool helps the agent understand which rainbow colors
     the user is eating and which they might be missing.
 
-    Args:
-        user_id: User ID (optional, will be retrieved from session context if not provided)
-
     Returns:
         Dictionary with rainbow color summary
     """
-    # If no user_id provided, try to get from session context
-    if user_id is None:
-        try:
-            from google.adk.sessions import get_current_session
-            session = get_current_session()
-            user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
-        except Exception:
-            user_id = "00000000-0000-0000-0000-000000000001"
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
     # Get the start of the current week
     today = datetime.now()
     start_of_week = today - timedelta(days=today.weekday())
@@ -279,7 +264,6 @@ def log_sleep_tool(
     sleep_hours: float,
     sleep_quality: Optional[str] = None,
     sleep_notes: Optional[str] = None,
-    user_id: Optional[str] = None,
     log_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -294,20 +278,17 @@ def log_sleep_tool(
         sleep_hours: Number of hours slept (e.g., 7.5, 8.0)
         sleep_quality: Quality rating - one of: 'poor', 'fair', 'good', 'excellent'
         sleep_notes: Optional notes about sleep (e.g., "Woke up 3 times", "Felt refreshed")
-        user_id: User ID (optional, will be retrieved from session if not provided)
         log_date: Date to log for in YYYY-MM-DD format (optional, defaults to today)
 
     Returns:
         Dictionary with success status and logged information
     """
-    # Get user_id from session if not provided
-    if user_id is None:
-        try:
-            from google.adk.sessions import get_current_session
-            session = get_current_session()
-            user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
-        except Exception:
-            user_id = "00000000-0000-0000-0000-000000000001"
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
 
     # Default to today if no date provided
     if log_date is None:
@@ -371,7 +352,6 @@ def log_symptoms_tool(
     symptoms: List[str],
     symptom_severity: Optional[str] = None,
     symptom_notes: Optional[str] = None,
-    user_id: Optional[str] = None,
     log_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -390,20 +370,17 @@ def log_symptoms_tool(
         symptoms: List of symptoms (e.g., ['nausea', 'fatigue', 'headache'])
         symptom_severity: Severity level - one of: 'mild', 'moderate', 'severe'
         symptom_notes: Optional detailed notes about symptoms
-        user_id: User ID (optional, will be retrieved from session if not provided)
         log_date: Date to log for in YYYY-MM-DD format (optional, defaults to today)
 
     Returns:
         Dictionary with success status and logged information
     """
-    # Get user_id from session if not provided
-    if user_id is None:
-        try:
-            from google.adk.sessions import get_current_session
-            session = get_current_session()
-            user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
-        except Exception:
-            user_id = "00000000-0000-0000-0000-000000000001"
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
 
     # Default to today if no date provided
     if log_date is None:
@@ -467,7 +444,6 @@ def log_symptoms_tool(
 
 
 def get_daily_log_tool(
-    user_id: Optional[str] = None,
     log_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -476,20 +452,17 @@ def get_daily_log_tool(
     Use this tool to check what the user has already logged for a day.
 
     Args:
-        user_id: User ID (optional, will be retrieved from session if not provided)
         log_date: Date to get log for in YYYY-MM-DD format (optional, defaults to today)
 
     Returns:
         Dictionary with daily log information or message if no log exists
     """
-    # Get user_id from session if not provided
-    if user_id is None:
-        try:
-            from google.adk.sessions import get_current_session
-            session = get_current_session()
-            user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
-        except Exception:
-            user_id = "00000000-0000-0000-0000-000000000001"
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
 
     # Default to today if no date provided
     if log_date is None:

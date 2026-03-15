@@ -166,6 +166,15 @@ async def chat_with_agent(request: ChatRequest) -> ChatResponse:
             content=request.message
         )
 
+        # Store the DB user_id in session state so tools can access it
+        session = await session_service.get_session(
+            app_name=APP_NAME,
+            user_id="default_user",
+            session_id=session_id
+        )
+        if session:
+            session.state["user_id"] = user_id
+
         # Call the agent
         response_text = await call_agent_async(
             query=request.message,
