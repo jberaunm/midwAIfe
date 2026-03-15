@@ -15,10 +15,9 @@ from midwaife.tools.user_data_tools import create_user_tools
 
 from dotenv import load_dotenv
 load_dotenv()
-sk_my_secret_proxy_key = os.getenv("PROXY_API_KEY")
 
 os.environ["LITELLM_PROXY_API_BASE"] = os.getenv("LITELLM_PROXY_API_BASE", "http://127.0.0.1:4000")
-os.environ["LITELLM_PROXY_API_KEY"] = sk_my_secret_proxy_key
+os.environ["LITELLM_PROXY_API_KEY"] = os.getenv("PROXY_API_KEY")
 
 LiteLlm.use_litellm_proxy = True
 
