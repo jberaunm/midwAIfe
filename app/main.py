@@ -223,19 +223,29 @@ async def client_to_agent_messaging(
 # FastAPI web app
 #
 
-async def warmup_proxy():
-    """Ping the LiteLLM proxy on startup so it wakes up alongside the backend."""
+async def keep_proxy_alive():
+    """Periodically ping the LiteLLM proxy to prevent Render free tier spin-down."""
     import httpx
     proxy_url = os.getenv("LITELLM_PROXY_API_BASE", "http://127.0.0.1:4000")
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.get(f"{proxy_url}/health", timeout=30)
-        print(f"[OK] LiteLLM proxy warmed up at {proxy_url}")
-    except Exception as e:
-        print(f"[WARN] Could not warm up proxy at {proxy_url}: {e}")
+    # Only run keep-alive in production (when proxy is a remote service)
+    if "127.0.0.1" in proxy_url or "localhost" in proxy_url:
+        return
+    await asyncio.sleep(10)  # brief delay to let the app fully start
+    while True:
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get(f"{proxy_url}/health", timeout=10)
+            print(f"[OK] Proxy keep-alive ping sent to {proxy_url}")
+        except Exception as e:
+            print(f"[WARN] Proxy keep-alive failed: {e}")
+        await asyncio.sleep(300)  # ping every 5 minutes
 
 
-app = FastAPI(on_startup=[warmup_proxy])
+async def startup():
+    asyncio.create_task(keep_proxy_alive())
+
+
+app = FastAPI(on_startup=[startup])
 
 # Include routers
 app.include_router(meals_router)
