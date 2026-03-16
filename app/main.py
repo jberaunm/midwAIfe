@@ -223,7 +223,19 @@ async def client_to_agent_messaging(
 # FastAPI web app
 #
 
-app = FastAPI()
+async def warmup_proxy():
+    """Ping the LiteLLM proxy on startup so it wakes up alongside the backend."""
+    import httpx
+    proxy_url = os.getenv("LITELLM_PROXY_API_BASE", "http://127.0.0.1:4000")
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get(f"{proxy_url}/health", timeout=30)
+        print(f"[OK] LiteLLM proxy warmed up at {proxy_url}")
+    except Exception as e:
+        print(f"[WARN] Could not warm up proxy at {proxy_url}: {e}")
+
+
+app = FastAPI(on_startup=[warmup_proxy])
 
 # Include routers
 app.include_router(meals_router)
