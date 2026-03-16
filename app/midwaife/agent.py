@@ -25,7 +25,7 @@ LiteLlm.use_litellm_proxy = True
 user_tools = create_user_tools()
 
 root_agent = LlmAgent(
-    model=LiteLlm(model="litellm_proxy/midwaife-model"),
+    model=LiteLlm(model="litellm_proxy/mistral-small-latest"),
     name='root_agent',
     description="AI companion for pregnancy support",
     instruction="""
