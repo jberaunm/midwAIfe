@@ -36,6 +36,12 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
   const [isTrashHovered, setIsTrashHovered] = useState(false);
   const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set());
 
+  // Format a Date as YYYY-MM-DD using local time (not UTC)
+  const toLocalDateStr = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
   // Calculate start of week for the selected pregnancy week
   const getWeekStartDate = () => {
     const today = new Date();
@@ -45,7 +51,7 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
 
     if (!selectedWeek || !actualWeek || selectedWeek === actualWeek) {
       // Default: current calendar week (Sunday)
-      return startDate.toISOString().split('T')[0];
+      return toLocalDateStr(startDate);
     }
 
     // Calculate the date offset for the selected pregnancy week
@@ -54,7 +60,7 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
     const offsetDate = new Date(startDate);
     offsetDate.setDate(startDate.getDate() + (weekOffset * 7));
 
-    return offsetDate.toISOString().split('T')[0];
+    return toLocalDateStr(offsetDate);
   };
 
   // Map rainbow color names to hex colors
@@ -194,12 +200,13 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
     setError(null);
     try {
       const startDate = getWeekStartDate();
+      // Parse startDate as local time to avoid UTC offset shifting the date
+      const [sy, sm, sd] = startDate.split('-').map(Number);
       const data = await getWeekMeals(USER_ID, startDate);
 
       // Calculate end date (6 days after start)
-      const endDateObj = new Date(startDate);
-      endDateObj.setDate(endDateObj.getDate() + 6);
-      const endDate = endDateObj.toISOString().split('T')[0];
+      const endDateObj = new Date(sy, sm - 1, sd + 6);
+      const endDate = toLocalDateStr(endDateObj);
 
       // Fetch daily logs for the week
       let logs: DailyLog[] = [];
@@ -219,12 +226,10 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
 
       // Fill in missing days
       const fullWeekData: DayData[] = [];
-      const startDateObj = new Date(startDate);
 
       for (let i = 0; i < 7; i++) {
-        const currentDate = new Date(startDateObj);
-        currentDate.setDate(startDateObj.getDate() + i);
-        const dateStr = currentDate.toISOString().split('T')[0];
+        const currentDate = new Date(sy, sm - 1, sd + i);
+        const dateStr = toLocalDateStr(currentDate);
 
         const existingDay = data.find((d: DayData) => d.date === dateStr);
 
@@ -236,7 +241,7 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
           const emptyDay: DayData = {
             id: dateStr,
             date: dateStr,
-            dayOfWeek: DAYS[i] as 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday',
+            dayOfWeek: DAYS[currentDate.getDay()] as 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday',
             meals: {
               breakfast: null,
               snack1: null,
@@ -480,7 +485,7 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
 
           {/* Day Rows */}
           {weekData.map((dayData) => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = toLocalDateStr(new Date());
             const isToday = dayData.date === today;
 
             return (

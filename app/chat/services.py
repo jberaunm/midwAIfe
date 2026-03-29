@@ -251,44 +251,7 @@ async def generate_daily_greeting_async(user_id: str) -> str:
         else:
             time_of_day = "evening"
 
-        # Determine if user is planning (midnight to 6 AM) or tracking (after 6 AM)
-        if hour < 6:
-            context = "planning their meals for the day ahead"
-        else:
-            context = "tracking meals they've eaten"
-
-        # Get today's meals to add to prompt context
-        today_meals = get_today_meals(user_id)
-
-        # Create a detailed prompt for the agent
-        if today_meals['has_meals']:
-            meal_context = f"The user has already logged {today_meals['meal_count']} meal(s) today with {today_meals['food_count']} food item(s). "
-            meal_context += f"Meal types: {', '.join(today_meals['foods_by_meal'].keys())}. "
-            if today_meals['sample_foods']:
-                meal_context += f"Some foods they've logged: {', '.join(today_meals['sample_foods'])}. "
-        else:
-            meal_context = "The user hasn't logged any meals yet today. "
-
-        prompt = f"""Generate a warm, personalized {time_of_day} greeting for this user (user_id: {user_id}).
-
-Context:
-- Current time: {time_of_day} ({hour}:00)
-- User is currently {context}
-- {meal_context}
-
-Instructions:
-1. Use your tools to get the user's information (name, pregnancy week) - pass user_id: {user_id}
-2. Check their rainbow color progress for the week - pass user_id: {user_id}
-3. Create a friendly, encouraging greeting that:
-   - Uses their first name
-   - Mentions their current pregnancy week and trimester
-   - {"Acknowledges the meals they've planned/logged today" if today_meals['has_meals'] else "Encourages them to start tracking"}
-   - {"Recognizes they're planning ahead (it's very early!)" if hour < 6 and today_meals['has_meals'] else ""}
-   - Provides encouragement about their rainbow color progress
-   - Ends with 'How can I help you today?'
-
-Keep it warm, natural, and conversational. Use **bold** for emphasis on key information like week numbers and meal types.
-Don't be too long - aim for 3-4 sentences plus the closing question."""
+        prompt = f"DAILY_GREETING: {time_of_day}"
 
         # Ensure session is initialized and set user_id in session state
         from midwaife.routes import session_service, APP_NAME, ensure_session_initialized

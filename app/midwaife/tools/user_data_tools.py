@@ -40,6 +40,43 @@ def calculate_pregnancy_week(due_date: str) -> int:
     return max(1, min(42, weeks_pregnant))
 
 
+def fetch_user_info(user_id: str) -> Dict[str, Any]:
+    """Fetch user info from DB by user_id. Shared by the tool and build_instruction."""
+    query = """
+        SELECT
+            first_name,
+            due_date,
+            last_period_date,
+            dietary_restrictions,
+            preferred_unit,
+            daily_caffeine_limit
+        FROM users
+        WHERE id = %s
+    """
+    result = execute_query(query, (user_id,), fetch_one=True)
+
+    if not result:
+        return {
+            "first_name": None,
+            "current_week": None,
+            "due_date": None,
+            "dietary_restrictions": [],
+            "caffeine_limit": 200
+        }
+
+    due_date = result.get('due_date')
+    current_week = calculate_pregnancy_week(str(due_date)) if due_date else None
+
+    return {
+        "first_name": result.get('first_name'),
+        "current_week": current_week,
+        "due_date": str(due_date) if due_date else None,
+        "dietary_restrictions": result.get('dietary_restrictions', []),
+        "preferred_unit": result.get('preferred_unit', 'metric'),
+        "caffeine_limit": result.get('daily_caffeine_limit', 200)
+    }
+
+
 def get_user_info_tool() -> Dict[str, Any]:
     """
     Get user information including pregnancy details.
@@ -60,41 +97,7 @@ def get_user_info_tool() -> Dict[str, Any]:
         user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
     except Exception:
         user_id = "00000000-0000-0000-0000-000000000001"
-    query = """
-        SELECT
-            first_name,
-            due_date,
-            last_period_date,
-            dietary_restrictions,
-            preferred_unit,
-            daily_caffeine_limit
-        FROM users
-        WHERE id = %s
-    """
-
-    result = execute_query(query, (user_id,), fetch_one=True)
-
-    if not result:
-        return {
-            "error": f"User not found: {user_id}",
-            "first_name": None,
-            "current_week": None,
-            "due_date": None,
-            "dietary_restrictions": [],
-            "caffeine_limit": 200
-        }
-
-    due_date = result.get('due_date')
-    current_week = calculate_pregnancy_week(str(due_date)) if due_date else None
-
-    return {
-        "first_name": result.get('first_name'),
-        "current_week": current_week,
-        "due_date": str(due_date) if due_date else None,
-        "dietary_restrictions": result.get('dietary_restrictions', []),
-        "preferred_unit": result.get('preferred_unit', 'metric'),
-        "caffeine_limit": result.get('daily_caffeine_limit', 200)
-    }
+    return fetch_user_info(user_id)
 
 
 def get_current_week_meals_tool() -> Dict[str, Any]:
@@ -118,7 +121,7 @@ def get_current_week_meals_tool() -> Dict[str, Any]:
         user_id = "00000000-0000-0000-0000-000000000001"
     # Get the start of the current week (Monday)
     today = datetime.now()
-    start_of_week = today - timedelta(days=today.weekday())
+    start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
     start_date = start_of_week.strftime('%Y-%m-%d')
 
     query = """
@@ -217,7 +220,7 @@ def get_rainbow_summary_tool() -> Dict[str, Any]:
         user_id = "00000000-0000-0000-0000-000000000001"
     # Get the start of the current week
     today = datetime.now()
-    start_of_week = today - timedelta(days=today.weekday())
+    start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
     start_date = start_of_week.strftime('%Y-%m-%d')
 
     query = """
@@ -502,6 +505,153 @@ def get_daily_log_tool(
     }
 
 
+def get_today_meals_tool() -> Dict[str, Any]:
+    """
+    Get all meals logged for today.
+
+    Use this tool when the user asks about what they ate today, their current
+    day's nutrition, or wants a summary of today's meals.
+
+    Returns:
+        Dictionary with today's meals organized by meal type, rainbow colors consumed,
+        and any food safety warnings.
+    """
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
+
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    query = """
+        SELECT
+            m.meal_type,
+            f.name as food_name,
+            f.rainbow_color,
+            f.warning_message
+        FROM meals m
+        JOIN meal_items mi ON m.id = mi.meal_id
+        JOIN foods f ON mi.food_id = f.id
+        WHERE m.user_id = %s
+            AND m.log_date = %s
+        ORDER BY
+            CASE m.meal_type
+                WHEN 'breakfast' THEN 1
+                WHEN 'snack1' THEN 2
+                WHEN 'lunch' THEN 3
+                WHEN 'snack2' THEN 4
+                WHEN 'dinner' THEN 5
+            END
+    """
+
+    results = execute_query(query, (user_id, today), fetch_one=False)
+
+    if not results:
+        return {
+            "date": today,
+            "message": "No meals logged for today",
+            "meals": {},
+            "summary": {
+                "total_foods": 0,
+                "rainbow_colors": []
+            }
+        }
+
+    meals: Dict[str, list] = {}
+    rainbow_colors = set()
+    warnings = []
+
+    for row in results:
+        meal_type = row['meal_type']
+        if meal_type not in meals:
+            meals[meal_type] = []
+
+        meals[meal_type].append({
+            "name": row['food_name'],
+            "rainbow_color": row['rainbow_color'],
+            "has_safety_warning": bool(row['warning_message'])
+        })
+
+        if row['rainbow_color']:
+            rainbow_colors.add(row['rainbow_color'])
+        if row['warning_message']:
+            warnings.append({"food": row['food_name'], "warning": row['warning_message']})
+
+    return {
+        "date": today,
+        "meals": meals,
+        "summary": {
+            "total_foods": len(results),
+            "rainbow_colors": sorted(list(rainbow_colors)),
+            "warnings": warnings
+        }
+    }
+
+
+def get_weekly_milestone_tool() -> Dict[str, Any]:
+    """
+    Get the pregnancy milestone information for the user's current week.
+
+    This tool fetches from weekly_milestones:
+    - Baby size comparison
+    - Development milestone (what the baby is doing this week)
+    - Nutritional focus color (rainbow category to prioritize)
+    - Key nutrient for this week
+    - Action tip for the week
+
+    Use this tool to provide week-specific insights and encouragement during
+    greetings or when the user asks about their baby's development.
+
+    Returns:
+        Dictionary with milestone information for the current pregnancy week
+    """
+    try:
+        from google.adk.sessions import get_current_session
+        session = get_current_session()
+        user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
+    except Exception:
+        user_id = "00000000-0000-0000-0000-000000000001"
+
+    info = fetch_user_info(user_id)
+    current_week = info.get("current_week")
+
+    if not current_week:
+        return {"error": "Could not determine current pregnancy week"}
+
+    query = """
+        SELECT
+            week_number,
+            nhs_size_comparison,
+            development_milestone,
+            nutritional_focus_color,
+            key_nutrient,
+            action_tip,
+            source_url
+        FROM weekly_milestones
+        WHERE week_number = %s
+    """
+
+    result = execute_query(query, (current_week,), fetch_one=True)
+
+    if not result:
+        return {
+            "week_number": current_week,
+            "message": f"No milestone data found for week {current_week}"
+        }
+
+    return {
+        "week_number": result["week_number"],
+        "size_comparison": result.get("nhs_size_comparison"),
+        "development_milestone": result.get("development_milestone"),
+        "nutritional_focus_color": result.get("nutritional_focus_color"),
+        "key_nutrient": result.get("key_nutrient"),
+        "action_tip": result.get("action_tip"),
+        "source_url": result.get("source_url"),
+    }
+
+
 # Tool definitions for Google ADK
 def create_user_tools():
     """Create tool definitions for the agent"""
@@ -509,6 +659,8 @@ def create_user_tools():
 
     tools = [
         FunctionTool(func=get_user_info_tool),
+        FunctionTool(func=get_weekly_milestone_tool),
+        FunctionTool(func=get_today_meals_tool),
         FunctionTool(func=get_current_week_meals_tool),
         FunctionTool(func=get_rainbow_summary_tool),
         FunctionTool(func=log_sleep_tool),
