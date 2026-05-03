@@ -122,14 +122,15 @@ class NamesAIService:
 
         if positive_names:
             lines.append(
-                "\nNames already on their list (do not re-suggest): "
-                + ", ".join(positive_names)
+                "\nNames already on their list — NEVER suggest any of these "
+                "(case-insensitive match): " + ", ".join(positive_names)
             )
 
         if rejected_names:
             lines.append(
-                "\nNames they have explicitly rejected (NEVER suggest these, "
-                "case-insensitive): " + ", ".join(rejected_names)
+                "\nNames they have explicitly rejected — NEVER suggest any "
+                "of these (case-insensitive match): "
+                + ", ".join(rejected_names)
             )
 
         lines.append(
