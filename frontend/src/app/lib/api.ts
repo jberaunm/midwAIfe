@@ -268,3 +268,129 @@ export async function deleteDailyLog(userId: string, logDate: string): Promise<v
     method: 'DELETE',
   });
 }
+
+// ============================================================================
+// BABY NAMES
+// ============================================================================
+
+export type NameGender = 'boy' | 'girl' | 'either';
+export type NameStatus = 'top' | 'shortlisted' | 'rejected';
+export type NameSource = 'parent' | 'ai';
+
+export interface NamePreferences {
+  user_id: string;
+  gender: NameGender;
+  notes: string | null;
+  updated_at: string | null;
+}
+
+export interface NamePreferencesUpsert {
+  gender: NameGender;
+  notes?: string | null;
+}
+
+export interface NameCandidate {
+  id: string;
+  user_id: string;
+  name: string;
+  origin: string | null;
+  meaning: string | null;
+  notes: string | null;
+  status: NameStatus;
+  rank: number | null;
+  source: NameSource;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface NameCandidateCreate {
+  name: string;
+  origin?: string | null;
+  meaning?: string | null;
+  notes?: string | null;
+  status?: NameStatus;
+  source?: NameSource;
+}
+
+export async function getNamePreferences(userId: string): Promise<NamePreferences> {
+  return fetchApi(`/api/names/preferences/${userId}`);
+}
+
+export async function upsertNamePreferences(
+  userId: string,
+  prefs: NamePreferencesUpsert,
+): Promise<NamePreferences> {
+  return fetchApi(`/api/names/preferences/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(prefs),
+  });
+}
+
+export async function getNameCandidates(
+  userId: string,
+  status?: NameStatus,
+): Promise<NameCandidate[]> {
+  const url = status
+    ? `/api/names/candidates/${userId}?status=${status}`
+    : `/api/names/candidates/${userId}`;
+  return fetchApi(url);
+}
+
+export async function addNameCandidate(
+  userId: string,
+  data: NameCandidateCreate,
+): Promise<NameCandidate> {
+  return fetchApi(`/api/names/candidates/${userId}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateNameStatus(
+  userId: string,
+  candidateId: string,
+  status: NameStatus,
+): Promise<NameCandidate> {
+  return fetchApi(`/api/names/candidates/${userId}/${candidateId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function reorderNameCandidates(
+  userId: string,
+  status: 'top' | 'shortlisted',
+  orderedIds: string[],
+): Promise<NameCandidate[]> {
+  return fetchApi(`/api/names/candidates/${userId}/reorder`, {
+    method: 'POST',
+    body: JSON.stringify({ status, ordered_ids: orderedIds }),
+  });
+}
+
+export async function deleteNameCandidate(
+  userId: string,
+  candidateId: string,
+): Promise<void> {
+  return fetchApi(`/api/names/candidates/${userId}/${candidateId}`, {
+    method: 'DELETE',
+  });
+}
+
+export interface NameSuggestionItem {
+  name: string;
+  origin: string | null;
+  meaning: string | null;
+}
+
+export interface NameSuggestionResponse {
+  suggestions: NameSuggestionItem[];
+  message_id: string;
+  message_content: string;
+}
+
+export async function suggestNames(userId: string): Promise<NameSuggestionResponse> {
+  return fetchApi(`/api/names/suggest/${userId}`, {
+    method: 'POST',
+  });
+}

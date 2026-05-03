@@ -2,7 +2,10 @@
 import React, { useRef, useEffect, useState } from "react";
 import ChatAssistant from "./components/ChatAssistant";
 import WeekView from "./components/WeekView";
+import NamesView from "./components/NamesView";
 import { getMilestone, getUser } from "./lib/api";
+
+type DashboardView = "meals" | "names";
 
 interface WeekMilestone {
   id: string;
@@ -57,6 +60,9 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState(14);
   const [actualWeek, setActualWeek] = useState(14); // User's actual current week
+  const [activeView, setActiveView] = useState<DashboardView>("meals");
+  const [chatRefreshKey, setChatRefreshKey] = useState(0);
+  const [namesRefreshKey, setNamesRefreshKey] = useState(0);
 
   useEffect(() => {
     const fetchUserAndMilestone = async () => {
@@ -183,11 +189,44 @@ export default function Home() {
 
       <main className="main-layout">
         <div className="week-column">
-          <WeekView selectedWeek={currentWeek} actualWeek={actualWeek} />
+          <div className="dashboard-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "meals"}
+              className={`dashboard-tab ${activeView === "meals" ? "active" : ""}`}
+              onClick={() => setActiveView("meals")}
+            >
+              Meals
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "names"}
+              className={`dashboard-tab ${activeView === "names" ? "active" : ""}`}
+              onClick={() => setActiveView("names")}
+            >
+              Baby Names
+            </button>
+          </div>
+
+          {activeView === "meals" ? (
+            <WeekView selectedWeek={currentWeek} actualWeek={actualWeek} />
+          ) : (
+            <NamesView
+              userId={user?.id}
+              onSuggestionMade={() => setChatRefreshKey((k) => k + 1)}
+              refreshKey={namesRefreshKey}
+            />
+          )}
         </div>
 
         <div className="chat-column">
-          <ChatAssistant userId={user?.id} />
+          <ChatAssistant
+            userId={user?.id}
+            refreshKey={chatRefreshKey}
+            onAgentResponse={() => setNamesRefreshKey((k) => k + 1)}
+          />
         </div>
       </main>
     </div>

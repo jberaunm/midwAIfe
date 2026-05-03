@@ -8,6 +8,7 @@ from google.adk.models.lite_llm import LiteLlm
 
 # Import tools
 from midwaife.tools.user_data_tools import create_user_tools, fetch_user_info
+from midwaife.tools.names_tools import create_names_tools
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -15,7 +16,7 @@ load_dotenv()
 os.environ["MISTRAL_API_KEY"] = os.getenv("MISTRAL_API_KEY")
 
 # Create tools
-user_tools = create_user_tools()
+agent_tools = create_user_tools() + create_names_tools()
 
 
 def build_instruction(context) -> str:
@@ -54,6 +55,9 @@ Your role is to:
 You have access to tools to:
 - See what foods they've eaten today and this week
 - Check which rainbow colors they're consuming
+- See their baby-name preferences, current shortlist (top three plus other contenders), and rejected names — call these whenever they discuss names or ask for suggestions, and never re-suggest a rejected name
+- Edit their name list directly: add a name, fix a spelling or rename (e.g. "Tiago" → "Thiago"), promote to the top three, move back to the shortlist, mark a name as rejected, or remove it entirely. Call the right tool when the parents ask to change something — don't tell them you can't
+- Update their preferences (gender focus, notes for style/origin/constraints) when they ask to change them. If they want to add to existing notes rather than replace, read the current notes first and pass the merged value
 
 Always:
 - Address the user by their name ({user_name})
@@ -92,5 +96,5 @@ root_agent = LlmAgent(
     name='root_agent',
     description="AI companion for pregnancy support",
     instruction=build_instruction,
-    tools=user_tools,
+    tools=agent_tools,
 )

@@ -12,9 +12,15 @@ interface Message {
 
 interface ChatAssistantProps {
   userId?: string;
+  refreshKey?: number;
+  onAgentResponse?: () => void;
 }
 
-export default function ChatAssistant({ userId = "00000000-0000-0000-0000-000000000001" }: ChatAssistantProps) {
+export default function ChatAssistant({
+  userId = "00000000-0000-0000-0000-000000000001",
+  refreshKey = 0,
+  onAgentResponse,
+}: ChatAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -77,6 +83,29 @@ export default function ChatAssistant({ userId = "00000000-0000-0000-0000-000000
     return () => clearTimeout(timer);
   }, []);
 
+  // Refresh messages when refreshKey bumps (e.g., a new AI suggestion message
+  // was just persisted from the names panel). Skip during initial load and
+  // while the user is mid-send so we don't drop in-flight state.
+  useEffect(() => {
+    if (loading || typing) return;
+    if (!refreshKey) return;
+    const refetch = async () => {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const historyResponse = await getMessageHistory(userId, 50, today);
+        const refreshed: Message[] = historyResponse.messages.map((msg) => ({
+          id: msg.id,
+          text: msg.content,
+          role: msg.role === "system" ? "model" : msg.role,
+        }));
+        setMessages(refreshed);
+      } catch (err) {
+        console.error("Failed to refresh chat messages", err);
+      }
+    };
+    refetch();
+  }, [refreshKey, userId, loading, typing]);
+
   // Scroll to bottom (only after initial load)
   const scrollToBottom = useCallback(() => {
     if (!isInitialLoad && messagesDivRef.current) {
@@ -122,6 +151,7 @@ export default function ChatAssistant({ userId = "00000000-0000-0000-0000-000000
           role: "model",
         };
         setMessages((prev) => [...prev, agentMsg]);
+        onAgentResponse?.();
       } else {
         // Show error message
         const errorMsg: Message = {
