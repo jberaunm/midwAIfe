@@ -21,9 +21,12 @@ const USER_ID = "00000000-0000-0000-0000-000000000001";
 interface WeekViewProps {
   selectedWeek?: number;
   actualWeek?: number;
+  /** LMP date as YYYY-MM-DD. When provided, the grid anchors on the
+   *  pregnancy week (LMP + (week-1)*7) rather than the calendar Sunday. */
+  lmpDate?: string | null;
 }
 
-export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
+export default function WeekView({ selectedWeek, actualWeek, lmpDate }: WeekViewProps) {
   const [weekData, setWeekData] = useState<DayData[]>([]);
   const [dailyLogs, setDailyLogs] = useState<Map<string, DailyLog>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -42,25 +45,22 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   };
 
-  // Calculate start of week for the selected pregnancy week
+  // Calculate start of week for the selected pregnancy week.
+  // When LMP is known, pregnancy week N starts on LMP + (N-1)*7 days
+  // (so a Wed-LMP user sees Wed→Tue, not Sun→Sat). Falls back to today's
+  // calendar Sunday only when LMP can't be resolved.
   const getWeekStartDate = () => {
+    if (lmpDate && selectedWeek) {
+      const [ly, lm, ld] = lmpDate.split("-").map(Number);
+      const start = new Date(ly, lm - 1, ld + (selectedWeek - 1) * 7);
+      return toLocalDateStr(start);
+    }
+
     const today = new Date();
     const dayOfWeek = today.getDay();
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - dayOfWeek);
-
-    if (!selectedWeek || !actualWeek || selectedWeek === actualWeek) {
-      // Default: current calendar week (Sunday)
-      return toLocalDateStr(startDate);
-    }
-
-    // Calculate the date offset for the selected pregnancy week
-    // Each week is 7 days, so offset is (selectedWeek - actualWeek) * 7 days
-    const weekOffset = selectedWeek - actualWeek;
-    const offsetDate = new Date(startDate);
-    offsetDate.setDate(startDate.getDate() + (weekOffset * 7));
-
-    return toLocalDateStr(offsetDate);
+    return toLocalDateStr(startDate);
   };
 
   // Map rainbow color names to hex colors
@@ -190,10 +190,11 @@ export default function WeekView({ selectedWeek, actualWeek }: WeekViewProps) {
     };
   };
 
-  // Load week meals on mount and when selected week changes
+  // Load week meals on mount and when selected week / LMP changes
   useEffect(() => {
     loadWeekMeals();
-  }, [selectedWeek, actualWeek]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWeek, actualWeek, lmpDate]);
 
   const loadWeekMeals = async () => {
     setLoading(true);

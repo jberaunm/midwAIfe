@@ -54,6 +54,22 @@ function calculatePregnancyWeek(dueDate: string | null): number {
   return Math.max(1, Math.min(42, weeksPregnant));
 }
 
+// Resolve LMP date: prefer last_period_date; fall back to due_date - 280 days.
+// Returned as YYYY-MM-DD in local time, or null if neither input is available.
+function resolveLmpDate(user: User | null): string | null {
+  if (!user) return null;
+  if (user.lastPeriodDate) {
+    return user.lastPeriodDate.split("T")[0];
+  }
+  if (user.dueDate) {
+    const due = new Date(user.dueDate);
+    due.setDate(due.getDate() - 280);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}`;
+  }
+  return null;
+}
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [milestone, setMilestone] = useState<WeekMilestone | null>(null);
@@ -211,7 +227,11 @@ export default function Home() {
           </div>
 
           {activeView === "meals" ? (
-            <WeekView selectedWeek={currentWeek} actualWeek={actualWeek} />
+            <WeekView
+              selectedWeek={currentWeek}
+              actualWeek={actualWeek}
+              lmpDate={resolveLmpDate(user)}
+            />
           ) : (
             <NamesView
               userId={user?.id}

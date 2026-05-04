@@ -40,6 +40,34 @@ def calculate_pregnancy_week(due_date: str) -> int:
     return max(1, min(42, weeks_pregnant))
 
 
+def resolve_lmp_date(
+    due_date: Optional[str], last_period_date: Optional[str]
+) -> Optional[str]:
+    """Resolve the LMP (last menstrual period) date.
+
+    Prefers `last_period_date` if set; falls back to `due_date - 280 days`.
+    Returns None if neither is available.
+    """
+    if last_period_date:
+        return str(last_period_date).split('T')[0]
+    if due_date:
+        due = datetime.fromisoformat(str(due_date).split('T')[0])
+        return (due - timedelta(days=280)).strftime('%Y-%m-%d')
+    return None
+
+
+def get_pregnancy_week_range(lmp_date: str, week_number: int) -> tuple:
+    """Return (start_date, end_date) ISO strings for pregnancy week N.
+
+    Pregnancy weeks are anchored to LMP, NOT the calendar week — so a
+    parent whose LMP fell on a Wednesday has weeks that run Wed→Tue.
+    """
+    lmp = datetime.fromisoformat(lmp_date.split('T')[0])
+    start = lmp + timedelta(days=(week_number - 1) * 7)
+    end = start + timedelta(days=6)
+    return start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d')
+
+
 def fetch_user_info(user_id: str) -> Dict[str, Any]:
     """Fetch user info from DB by user_id. Shared by the tool and build_instruction."""
     query = """
@@ -60,17 +88,24 @@ def fetch_user_info(user_id: str) -> Dict[str, Any]:
             "first_name": None,
             "current_week": None,
             "due_date": None,
+            "lmp_date": None,
             "dietary_restrictions": [],
             "caffeine_limit": 200
         }
 
     due_date = result.get('due_date')
+    last_period_date = result.get('last_period_date')
     current_week = calculate_pregnancy_week(str(due_date)) if due_date else None
+    lmp_date = resolve_lmp_date(
+        str(due_date) if due_date else None,
+        str(last_period_date) if last_period_date else None,
+    )
 
     return {
         "first_name": result.get('first_name'),
         "current_week": current_week,
         "due_date": str(due_date) if due_date else None,
+        "lmp_date": lmp_date,
         "dietary_restrictions": result.get('dietary_restrictions', []),
         "preferred_unit": result.get('preferred_unit', 'metric'),
         "caffeine_limit": result.get('daily_caffeine_limit', 200)
@@ -100,6 +135,23 @@ def get_user_info_tool() -> Dict[str, Any]:
     return fetch_user_info(user_id)
 
 
+def _current_pregnancy_week_start(user_id: str) -> str:
+    """Pick the start date for "this week" of meals.
+
+    Anchored to LMP when known (so a Wednesday-LMP user sees Wed→Tue);
+    falls back to today's calendar Sunday otherwise.
+    """
+    info = fetch_user_info(user_id)
+    lmp_date = info.get("lmp_date")
+    current_week = info.get("current_week")
+    if lmp_date and current_week:
+        start_date, _ = get_pregnancy_week_range(lmp_date, current_week)
+        return start_date
+    today = datetime.now()
+    start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
+    return start_of_week.strftime('%Y-%m-%d')
+
+
 def get_current_week_meals_tool() -> Dict[str, Any]:
     """
     Get all foods consumed during the current week.
@@ -119,10 +171,8 @@ def get_current_week_meals_tool() -> Dict[str, Any]:
         user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
     except Exception:
         user_id = "00000000-0000-0000-0000-000000000001"
-    # Get the start of the current week (Monday)
-    today = datetime.now()
-    start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
-    start_date = start_of_week.strftime('%Y-%m-%d')
+    # Pregnancy weeks are anchored to LMP — see _current_pregnancy_week_start
+    start_date = _current_pregnancy_week_start(user_id)
 
     query = """
         SELECT
@@ -218,10 +268,8 @@ def get_rainbow_summary_tool() -> Dict[str, Any]:
         user_id = session.state.get("user_id", "00000000-0000-0000-0000-000000000001")
     except Exception:
         user_id = "00000000-0000-0000-0000-000000000001"
-    # Get the start of the current week
-    today = datetime.now()
-    start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
-    start_date = start_of_week.strftime('%Y-%m-%d')
+    # Pregnancy weeks are anchored to LMP — see _current_pregnancy_week_start
+    start_date = _current_pregnancy_week_start(user_id)
 
     query = """
         SELECT
