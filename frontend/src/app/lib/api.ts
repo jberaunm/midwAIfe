@@ -131,6 +131,7 @@ export interface ChatRequest {
   message: string;
   user_id?: string;
   session_id?: string;
+  skip_save_user_message?: boolean;
 }
 
 export interface ChatResponse {
@@ -142,10 +143,13 @@ export interface ChatResponse {
 }
 
 export async function chatWithAgent(request: ChatRequest): Promise<ChatResponse> {
-  return fetchApi('/api/agent/chat', {
+  console.log('[API] chatWithAgent called:', { message: request.message.substring(0, 50), userId: request.user_id });
+  const response = await fetchApi('/api/agent/chat', {
     method: 'POST',
     body: JSON.stringify(request),
   });
+  console.log('[API] chatWithAgent response:', { success: response.success, userId: response.user_id });
+  return response;
 }
 
 export async function getAgentHealth() {
@@ -391,6 +395,145 @@ export interface NameSuggestionResponse {
 
 export async function suggestNames(userId: string): Promise<NameSuggestionResponse> {
   return fetchApi(`/api/names/suggest/${userId}`, {
+    method: 'POST',
+  });
+}
+
+// ============================================================================
+// BABY ESSENTIALS
+// ============================================================================
+
+export type EssentialCategory =
+  | 'Sleep' | 'Feeding' | 'Clothing' | 'Bath'
+  | 'Gear' | 'Health' | 'Travel' | 'Nursery';
+export type EssentialStatus = 'needed' | 'bought' | 'skipped';
+export type EssentialSource = 'parent' | 'ai';
+export type EssentialSecondhand = 'yes' | 'no' | 'no_preference';
+
+export interface EssentialPreferences {
+  user_id: string;
+  accept_secondhand: EssentialSecondhand;
+  notes: string | null;
+  updated_at: string | null;
+}
+
+export interface EssentialPreferencesUpsert {
+  accept_secondhand: EssentialSecondhand;
+  notes?: string | null;
+}
+
+export interface EssentialItem {
+  id: string;
+  user_id: string;
+  name: string;
+  category: EssentialCategory;
+  status: EssentialStatus;
+  is_must_have: boolean;
+  estimated_cost: number | null;
+  purchase_url: string | null;
+  notes: string | null;
+  source: EssentialSource;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface EssentialItemCreate {
+  name: string;
+  category: EssentialCategory;
+  status?: EssentialStatus;
+  is_must_have?: boolean;
+  estimated_cost?: number | null;
+  purchase_url?: string | null;
+  notes?: string | null;
+  source?: EssentialSource;
+}
+
+export interface EssentialItemUpdate {
+  name?: string;
+  category?: EssentialCategory;
+  status?: EssentialStatus;
+  is_must_have?: boolean;
+  estimated_cost?: number | null;
+  purchase_url?: string | null;
+  notes?: string | null;
+  // Sentinels — pass true to explicitly null a nullable field
+  // (since `undefined` means "leave unchanged")
+  clear_estimated_cost?: boolean;
+  clear_purchase_url?: boolean;
+  clear_notes?: boolean;
+}
+
+export async function getEssentialPreferences(
+  userId: string,
+): Promise<EssentialPreferences> {
+  return fetchApi(`/api/essentials/preferences/${userId}`);
+}
+
+export async function upsertEssentialPreferences(
+  userId: string,
+  prefs: EssentialPreferencesUpsert,
+): Promise<EssentialPreferences> {
+  return fetchApi(`/api/essentials/preferences/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(prefs),
+  });
+}
+
+export async function getEssentialItems(
+  userId: string,
+  status?: EssentialStatus,
+): Promise<EssentialItem[]> {
+  const url = status
+    ? `/api/essentials/items/${userId}?status=${status}`
+    : `/api/essentials/items/${userId}`;
+  return fetchApi(url);
+}
+
+export async function addEssentialItem(
+  userId: string,
+  data: EssentialItemCreate,
+): Promise<EssentialItem> {
+  return fetchApi(`/api/essentials/items/${userId}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateEssentialItem(
+  userId: string,
+  itemId: string,
+  data: EssentialItemUpdate,
+): Promise<EssentialItem> {
+  return fetchApi(`/api/essentials/items/${userId}/${itemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEssentialItem(
+  userId: string,
+  itemId: string,
+): Promise<void> {
+  return fetchApi(`/api/essentials/items/${userId}/${itemId}`, {
+    method: 'DELETE',
+  });
+}
+
+export interface EssentialSuggestionItem {
+  name: string;
+  category?: EssentialCategory | null;
+  estimated_cost?: number | null;
+  description?: string | null;
+}
+
+export interface EssentialSuggestionResponse {
+  suggestions: EssentialSuggestionItem[];
+  message_id: string;
+  message_content: string;
+}
+
+export async function suggestEssentials(userId: string): Promise<EssentialSuggestionResponse> {
+  return fetchApi(`/api/essentials/suggest/${userId}`, {
     method: 'POST',
   });
 }

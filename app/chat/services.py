@@ -115,6 +115,8 @@ def save_message(
         fetch_one=True
     )
 
+    print(f"[save_message] Saved {role} message to user {user_id}: date={result['message_date']}, content_len={len(content)}")
+
     return {
         "id": str(result['id']),
         "user_id": str(result['user_id']),
@@ -179,15 +181,16 @@ def get_recent_messages(
         since_date: Optional date to filter messages from (YYYY-MM-DD)
 
     Returns:
-        List of message dicts ordered by creation time
+        List of message dicts ordered by creation time (oldest to newest)
     """
     if since_date:
+        # Get messages since the given date, ordered newest first
         query = """
             SELECT id, user_id, session_id, role, content, message_date, created_at, metadata
             FROM chat_messages
             WHERE user_id = %s
               AND message_date >= %s
-            ORDER BY created_at ASC
+            ORDER BY created_at DESC
             LIMIT %s
         """
         params = (user_id, since_date, limit)
@@ -202,6 +205,8 @@ def get_recent_messages(
         params = (user_id, limit)
 
     results = execute_query(query, params, fetch_one=False)
+
+    print(f"[get_recent_messages] Fetched {len(results) if results else 0} messages for user {user_id} since {since_date or 'any date'}")
 
     if not results:
         return []
@@ -219,9 +224,8 @@ def get_recent_messages(
             "metadata": row.get('metadata', {})
         })
 
-    # If we did DESC order, reverse to get chronological
-    if not since_date:
-        messages.reverse()
+    # Always reverse to get chronological order (oldest to newest)
+    messages.reverse()
 
     return messages
 

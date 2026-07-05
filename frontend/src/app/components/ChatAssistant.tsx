@@ -37,9 +37,19 @@ export default function ChatAssistant({
 
         // Get today's date for filtering
         const today = new Date().toISOString().split('T')[0];
+        console.log(`[ChatAssistant] Loading initial data for user ${userId} since ${today}`);
 
         // Load message history from today
-        const historyResponse = await getMessageHistory(userId, 50, today);
+        let historyResponse = await getMessageHistory(userId, 50, today);
+        console.log(`[ChatAssistant] Initial load fetched ${historyResponse.messages.length} messages with date filter`);
+
+        // Fallback: if no messages with date filter, try without date filter
+        // (helps with timezone issues between client and server)
+        if (historyResponse.messages.length === 0) {
+          console.log(`[ChatAssistant] No messages found with date filter, trying without...`);
+          historyResponse = await getMessageHistory(userId, 50);
+          console.log(`[ChatAssistant] Initial load fetched ${historyResponse.messages.length} messages without date filter`);
+        }
 
         // Convert to Message format
         const loadedMessages: Message[] = historyResponse.messages.map((msg) => ({
@@ -83,6 +93,18 @@ export default function ChatAssistant({
     return () => clearTimeout(timer);
   }, []);
 
+  // Expose debug info to window for console access
+  useEffect(() => {
+    (window as any).__chatDebug = {
+      userId,
+      refreshKey,
+      messageCount: messages.length,
+      isLoading: loading,
+      isTyping: typing,
+      messages: messages.slice(0, 3), // Show first 3 messages
+    };
+  }, [userId, refreshKey, messages, loading, typing]);
+
   // Refresh messages when refreshKey bumps (e.g., a new AI suggestion message
   // was just persisted from the names panel). Skip during initial load and
   // while the user is mid-send so we don't drop in-flight state.
@@ -92,7 +114,18 @@ export default function ChatAssistant({
     const refetch = async () => {
       try {
         const today = new Date().toISOString().split("T")[0];
-        const historyResponse = await getMessageHistory(userId, 50, today);
+        console.log(`[ChatAssistant] Refreshing messages for user ${userId} since ${today}`);
+        let historyResponse = await getMessageHistory(userId, 50, today);
+        console.log(`[ChatAssistant] Fetched ${historyResponse.messages.length} messages with date filter`);
+
+        // Fallback: if no messages with date filter, try without date filter
+        // (helps with timezone issues between client and server)
+        if (historyResponse.messages.length === 0) {
+          console.log(`[ChatAssistant] No messages found with date filter, trying without...`);
+          historyResponse = await getMessageHistory(userId, 50);
+          console.log(`[ChatAssistant] Fetched ${historyResponse.messages.length} messages without date filter`);
+        }
+
         const refreshed: Message[] = historyResponse.messages.map((msg) => ({
           id: msg.id,
           text: msg.content,
@@ -183,7 +216,7 @@ export default function ChatAssistant({
         <h2 className="chat-title">AI Companion</h2>
         <div className="connection-status">
           <div className="status-dot connected"></div>
-          <span className="status-text">Ready</span>
+          <span className="status-text">Ready ({messages.length} msgs)</span>
         </div>
       </div>
 

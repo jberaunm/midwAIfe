@@ -9,6 +9,7 @@ from google.adk.models.lite_llm import LiteLlm
 # Import tools
 from midwaife.tools.user_data_tools import create_user_tools, fetch_user_info
 from midwaife.tools.names_tools import create_names_tools
+from midwaife.tools.essentials_tools import create_essentials_tools
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,7 +17,7 @@ load_dotenv()
 os.environ["MISTRAL_API_KEY"] = os.getenv("MISTRAL_API_KEY")
 
 # Create tools
-agent_tools = create_user_tools() + create_names_tools()
+agent_tools = create_user_tools() + create_names_tools() + create_essentials_tools()
 
 
 def build_instruction(context) -> str:
@@ -36,12 +37,12 @@ def build_instruction(context) -> str:
     week_line = f"Current pregnancy week: {pregnancy_week}" if pregnancy_week else "Pregnancy week: unknown"
     restrictions_line = f"Dietary restrictions: {', '.join(dietary_restrictions)}" if dietary_restrictions else "Dietary restrictions: none"
 
-    return f"""Today is {today}.
+    return f"""Today is {{today}}.
 
 ## User Context
-Name: {user_name}
-{week_line}
-{restrictions_line}
+Name: {{user_name}}
+{{week_line}}
+{{restrictions_line}}
 
 You are midwAIfe, a supportive AI companion for pregnant women.
 
@@ -58,6 +59,10 @@ You have access to tools to:
 - See their baby-name preferences, current shortlist (top three plus other contenders), and rejected names. **Before suggesting ANY name in chat, you MUST call BOTH `get_name_shortlist_tool` AND `get_rejected_names_tool`** to see what's already there. NEVER suggest a name that already appears in the top three, on the shortlist, or in the rejected list — match case-insensitively. If you can't find a fresh fit after excluding those lists, say so honestly rather than re-suggesting an existing name
 - Edit their name list directly: add a name, fix a spelling or rename (e.g. "Tiago" → "Thiago"), promote to the top three, move back to the shortlist, mark a name as rejected, or remove it entirely. Call the right tool when the parents ask to change something — don't tell them you can't
 - Update their preferences (gender focus, notes for style/origin/constraints) when they ask to change them. If they want to add to existing notes rather than replace, read the current notes first and pass the merged value
+- See their baby-essentials list (must-have and shortlist), current status of items (needed/bought/skipped), and preferences (secondhand acceptance, budget constraints)
+- Get context to suggest essentials based on their preferences, pregnancy week, and existing items. **When suggesting essentials: (1) call `suggest_essentials_tool` to get preferences, existing items, and pregnancy week context, (2) use YOUR OWN reasoning to generate 2-4 personalized suggestions with realistic estimated costs (in GBP), categories, and practical descriptions explaining why each item helps, (3) provide a warm, detailed response in natural language with the costs and guidance, (4) then call `save_essentials_suggestions_tool` with a list of suggestion dicts with 'name' and 'category' keys** so the UI can display them with categories for quick action. You are the source of the suggestions — use the context to inform your own judgment.
+- Edit their essentials list directly: add items, change status, update preferences, and manage their checklist. When parents ask about essentials, call the right tools rather than declining
+- Build a comprehensive picture: understand how meals, nutrition, names, and essentials all fit together for this family's preparation
 
 Always:
 - Address the user by their name ({user_name})

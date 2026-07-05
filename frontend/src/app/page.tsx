@@ -3,9 +3,10 @@ import React, { useRef, useEffect, useState } from "react";
 import ChatAssistant from "./components/ChatAssistant";
 import WeekView from "./components/WeekView";
 import NamesView from "./components/NamesView";
-import { getMilestone, getUser } from "./lib/api";
+import EssentialsView from "./components/EssentialsView";
+import { getMilestone, getUser, chatWithAgent } from "./lib/api";
 
-type DashboardView = "meals" | "names";
+type DashboardView = "meals" | "names" | "essentials";
 
 interface WeekMilestone {
   id: string;
@@ -79,6 +80,7 @@ export default function Home() {
   const [activeView, setActiveView] = useState<DashboardView>("meals");
   const [chatRefreshKey, setChatRefreshKey] = useState(0);
   const [namesRefreshKey, setNamesRefreshKey] = useState(0);
+  const [essentialsRefreshKey, setEssentialsRefreshKey] = useState(0);
 
   useEffect(() => {
     const fetchUserAndMilestone = async () => {
@@ -224,6 +226,15 @@ export default function Home() {
             >
               Baby Names
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "essentials"}
+              className={`dashboard-tab ${activeView === "essentials" ? "active" : ""}`}
+              onClick={() => setActiveView("essentials")}
+            >
+              Baby Essentials
+            </button>
           </div>
 
           {activeView === "meals" ? (
@@ -232,11 +243,27 @@ export default function Home() {
               actualWeek={actualWeek}
               lmpDate={resolveLmpDate(user)}
             />
-          ) : (
+          ) : activeView === "names" ? (
             <NamesView
               userId={user?.id}
               onSuggestionMade={() => setChatRefreshKey((k) => k + 1)}
               refreshKey={namesRefreshKey}
+            />
+          ) : (
+            <EssentialsView
+              userId={user?.id}
+              refreshKey={chatRefreshKey}
+              onSuggestEssentials={() => {
+                if (user?.id) {
+                  void chatWithAgent({
+                    message: "Can you suggest essentials for me? Consider our preferences and what we already have.",
+                    user_id: user.id,
+                    skip_save_user_message: true,
+                  }).then(() => {
+                    setChatRefreshKey((k) => k + 1);
+                  }).catch(err => console.error("Failed to send chat message", err));
+                }
+              }}
             />
           )}
         </div>

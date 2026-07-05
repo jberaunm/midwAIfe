@@ -24,6 +24,7 @@ from users.routes import router as users_router
 from midwaife.routes import router as agent_router
 from daily_logs.routes import router as daily_logs_router
 from names.routes import router as names_router
+from essentials.routes import router as essentials_router
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -232,6 +233,7 @@ app.include_router(users_router)
 app.include_router(agent_router)
 app.include_router(daily_logs_router)
 app.include_router(names_router)
+app.include_router(essentials_router)
 # Allow CORS for frontend dev server and production
 app.add_middleware(
     CORSMiddleware,

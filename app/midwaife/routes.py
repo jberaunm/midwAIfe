@@ -122,6 +122,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="Your question or message")
     user_id: Optional[str] = Field(None, description="User ID for tracking")
     session_id: Optional[str] = Field(None, description="Session ID for conversation context")
+    skip_save_user_message: bool = Field(False, description="If true, don't save the user message to chat history")
 
 
 class ChatResponse(BaseModel):
@@ -158,13 +159,14 @@ async def chat_with_agent(request: ChatRequest) -> ChatResponse:
         print(f"Using user: {user_id}, session: {session_id}")
         print(f"Query: {request.message[:50]}...")
 
-        # Save user message to database
-        save_message(
-            user_id=user_id,
-            session_id=session_id,
-            role='user',
-            content=request.message
-        )
+        # Save user message to database (unless skipped)
+        if not request.skip_save_user_message:
+            save_message(
+                user_id=user_id,
+                session_id=session_id,
+                role='user',
+                content=request.message
+            )
 
         # Store the DB user_id in session state so tools can access it
         session = await session_service.get_session(
@@ -238,12 +240,15 @@ async def get_message_history(
         List of messages in chronological order
     """
     try:
+        print(f"[get_message_history] user_id={user_id}, since_date={since_date}")
         messages = get_recent_messages(user_id, limit=limit, since_date=since_date)
+        print(f"[get_message_history] returning {len(messages)} messages")
         return MessageHistoryResponse(
             messages=messages,
             count=len(messages)
         )
     except Exception as e:
+        print(f"[get_message_history] error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
