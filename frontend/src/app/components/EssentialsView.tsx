@@ -400,7 +400,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
     try {
       const created = await addEssentialItem(userId, {
         name: s.name,
-        category: s.category,
+        category: s.category ?? "Sleep",
         status: "needed",
         // AI suggestions land on the shortlist (nice-to-have); parents
         // promote with ☆ once decided.
@@ -423,7 +423,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
     try {
       const created = await addEssentialItem(userId, {
         name: s.name,
-        category: s.category,
+        category: s.category ?? "Sleep",
         status: "skipped",
         is_must_have: false,
         estimated_cost: s.estimated_cost ?? null,
