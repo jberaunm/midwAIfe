@@ -80,7 +80,6 @@ export default function Home() {
   const [activeView, setActiveView] = useState<DashboardView>("meals");
   const [chatRefreshKey, setChatRefreshKey] = useState(0);
   const [namesRefreshKey, setNamesRefreshKey] = useState(0);
-  const [essentialsRefreshKey, setEssentialsRefreshKey] = useState(0);
 
   useEffect(() => {
     const fetchUserAndMilestone = async () => {

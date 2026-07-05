@@ -43,6 +43,8 @@ interface Suggestion {
   id: string;
   name: string;
   category: EssentialCategory | undefined;
+  estimated_cost?: number | null;
+  description?: string | null;
 }
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
@@ -145,6 +147,8 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
                   id: `temp-${Date.now()}-${i}`,
                   name: item.name,
                   category: item.category,
+                  estimated_cost: item.estimated_cost ?? null,
+                  description: item.description ?? null,
                 })
               );
               setSuggestions(tempSuggestions);
