@@ -136,7 +136,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
       (async () => {
         try {
           const response = await fetch(
-            `http://localhost:8000/api/essentials/latest-suggestions/${userId}`
+            `/api/essentials/latest-suggestions/${userId}`
           );
           if (response.ok) {
             const data = await response.json();
