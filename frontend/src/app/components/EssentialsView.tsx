@@ -10,6 +10,7 @@ import {
   deleteEssentialItem,
   getEssentialItems,
   getEssentialPreferences,
+  getLatestSuggestions,
   updateEssentialItem,
   upsertEssentialPreferences,
 } from "../lib/api";
@@ -135,24 +136,19 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
       // Fetch latest suggestions from the backend
       (async () => {
         try {
-          const response = await fetch(
-            `/api/essentials/latest-suggestions/${userId}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.suggestions && data.suggestions.length > 0) {
-              // Create temporary suggestion objects for UI display
-              const tempSuggestions: Suggestion[] = data.suggestions.map(
-                (item: any, i: number) => ({
-                  id: `temp-${Date.now()}-${i}`,
-                  name: item.name,
-                  category: item.category,
-                  estimated_cost: item.estimated_cost ?? null,
-                  description: item.description ?? null,
-                })
-              );
-              setSuggestions(tempSuggestions);
-            }
+          const data = await getLatestSuggestions(userId);
+          if (data.success && data.suggestions && data.suggestions.length > 0) {
+            // Create temporary suggestion objects for UI display
+            const tempSuggestions: Suggestion[] = data.suggestions.map(
+              (item, i: number) => ({
+                id: `temp-${Date.now()}-${i}`,
+                name: item.name,
+                category: item.category,
+                estimated_cost: item.estimated_cost ?? null,
+                description: item.description ?? null,
+              })
+            );
+            setSuggestions(tempSuggestions);
           }
         } catch (err) {
           console.error("Failed to fetch suggestions", err);

@@ -537,3 +537,12 @@ export async function suggestEssentials(userId: string): Promise<EssentialSugges
     method: 'POST',
   });
 }
+
+export async function getLatestSuggestions(userId: string): Promise<{
+  success: boolean;
+  suggestions: EssentialSuggestionItem[];
+  timestamp?: string;
+  message?: string;
+}> {
+  return fetchApi(`/api/essentials/latest-suggestions/${userId}`);
+}
