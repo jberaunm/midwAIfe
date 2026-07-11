@@ -143,7 +143,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
               (item, i: number) => ({
                 id: `temp-${Date.now()}-${i}`,
                 name: item.name,
-                category: item.category,
+                category: item.category ?? undefined,
                 estimated_cost: item.estimated_cost ?? null,
                 description: item.description ?? null,
               })
