@@ -429,6 +429,7 @@ export interface EssentialItem {
   category: EssentialCategory;
   status: EssentialStatus;
   is_must_have: boolean;
+  is_hospital_bag: boolean;
   estimated_cost: number | null;
   purchase_url: string | null;
   notes: string | null;
@@ -442,6 +443,7 @@ export interface EssentialItemCreate {
   category: EssentialCategory;
   status?: EssentialStatus;
   is_must_have?: boolean;
+  is_hospital_bag?: boolean;
   estimated_cost?: number | null;
   purchase_url?: string | null;
   notes?: string | null;
@@ -453,6 +455,7 @@ export interface EssentialItemUpdate {
   category?: EssentialCategory;
   status?: EssentialStatus;
   is_must_have?: boolean;
+  is_hospital_bag?: boolean;
   estimated_cost?: number | null;
   purchase_url?: string | null;
   notes?: string | null;

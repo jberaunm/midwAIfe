@@ -4,9 +4,10 @@ import ChatAssistant from "./components/ChatAssistant";
 import WeekView from "./components/WeekView";
 import NamesView from "./components/NamesView";
 import EssentialsView from "./components/EssentialsView";
+import HospitalBagView from "./components/HospitalBagView";
 import { getMilestone, getUser, chatWithAgent } from "./lib/api";
 
-type DashboardView = "meals" | "names" | "essentials";
+type DashboardView = "meals" | "names" | "essentials" | "hospital_bag";
 
 interface WeekMilestone {
   id: string;
@@ -135,6 +136,18 @@ export default function Home() {
     }
   };
 
+  const handleSuggestEssentials = () => {
+    if (user?.id) {
+      void chatWithAgent({
+        message: "Can you suggest essentials for me? Consider our preferences, any notes we've saved, and what we already have.",
+        user_id: user.id,
+        skip_save_user_message: true,
+      }).then(() => {
+        setChatRefreshKey((k) => k + 1);
+      }).catch(err => console.error("Failed to send chat message", err));
+    }
+  };
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -234,6 +247,15 @@ export default function Home() {
             >
               Baby Essentials
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "hospital_bag"}
+              className={`dashboard-tab ${activeView === "hospital_bag" ? "active" : ""}`}
+              onClick={() => setActiveView("hospital_bag")}
+            >
+              Hospital Bag
+            </button>
           </div>
 
           {activeView === "meals" ? (
@@ -248,21 +270,17 @@ export default function Home() {
               onSuggestionMade={() => setChatRefreshKey((k) => k + 1)}
               refreshKey={namesRefreshKey}
             />
-          ) : (
+          ) : activeView === "essentials" ? (
             <EssentialsView
               userId={user?.id}
               refreshKey={chatRefreshKey}
-              onSuggestEssentials={() => {
-                if (user?.id) {
-                  void chatWithAgent({
-                    message: "Can you suggest essentials for me? Consider our preferences and what we already have.",
-                    user_id: user.id,
-                    skip_save_user_message: true,
-                  }).then(() => {
-                    setChatRefreshKey((k) => k + 1);
-                  }).catch(err => console.error("Failed to send chat message", err));
-                }
-              }}
+              onSuggestEssentials={handleSuggestEssentials}
+            />
+          ) : (
+            <HospitalBagView
+              userId={user?.id}
+              refreshKey={chatRefreshKey}
+              onSuggestEssentials={handleSuggestEssentials}
             />
           )}
         </div>

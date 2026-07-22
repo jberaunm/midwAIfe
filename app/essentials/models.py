@@ -30,6 +30,7 @@ class EssentialItem(BaseModel):
     category: CategoryType
     status: StatusType
     is_must_have: bool
+    is_hospital_bag: bool
     estimated_cost: Optional[float] = None
     purchase_url: Optional[str] = None
     notes: Optional[str] = None
@@ -43,6 +44,7 @@ class EssentialItemCreate(BaseModel):
     category: CategoryType
     status: StatusType = "needed"
     is_must_have: bool = False
+    is_hospital_bag: bool = False
     estimated_cost: Optional[float] = None
     purchase_url: Optional[str] = None
     notes: Optional[str] = None
@@ -55,6 +57,7 @@ class EssentialItemUpdate(BaseModel):
     category: Optional[CategoryType] = None
     status: Optional[StatusType] = None
     is_must_have: Optional[bool] = None
+    is_hospital_bag: Optional[bool] = None
     estimated_cost: Optional[float] = None
     purchase_url: Optional[str] = None
     notes: Optional[str] = None

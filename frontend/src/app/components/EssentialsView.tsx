@@ -67,9 +67,10 @@ interface EssentialsViewProps {
   userId?: string;
   onSuggestEssentials?: () => void;
   refreshKey?: number;
+  filterMode?: "all" | "hospital_bag";
 }
 
-export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEssentials, refreshKey = 0 }: EssentialsViewProps) {
+export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEssentials, refreshKey = 0, filterMode = "all" }: EssentialsViewProps) {
   const [preferences, setPreferences] = useState<Preferences>({
     accept_secondhand: "no_preference",
     notes: "",
@@ -189,10 +190,16 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
 
   // ----- Derived data -----
 
-  const skippedCount = items.filter((i) => i.status === "skipped").length;
+  const visibleItems = useMemo(() => {
+    return filterMode === "hospital_bag"
+      ? items.filter((i) => i.is_hospital_bag)
+      : items.filter((i) => !i.is_hospital_bag);
+  }, [items, filterMode]);
+
+  const skippedCount = visibleItems.filter((i) => i.status === "skipped").length;
 
   const mainListItems = useMemo(() => {
-    const visible = items.filter(
+    const visible = visibleItems.filter(
       (i) =>
         (i.is_must_have && i.status !== "skipped") ||
         (i.status === "skipped" && showSkipped),
@@ -207,10 +214,10 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
       }
       return a.name.localeCompare(b.name);
     });
-  }, [items, showSkipped]);
+  }, [visibleItems, showSkipped]);
 
   const shortlistItems = useMemo(() => {
-    return items
+    return visibleItems
       .filter((i) => !i.is_must_have && i.status !== "skipped")
       .sort((a, b) => {
         if (a.category !== b.category) {
@@ -218,17 +225,17 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         }
         return a.name.localeCompare(b.name);
       });
-  }, [items]);
+  }, [visibleItems]);
 
   const totals = useMemo(() => {
-    const needed = items.filter(
+    const needed = visibleItems.filter(
       (i) => i.is_must_have && i.status === "needed",
     );
     return {
       neededCount: needed.length,
       neededCost: needed.reduce((acc, i) => acc + (i.estimated_cost ?? 0), 0),
     };
-  }, [items]);
+  }, [visibleItems]);
 
   // ----- Helpers -----
 
@@ -274,6 +281,18 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
       upsertItemInState(updated);
     } catch (err) {
       console.error("Failed to demote", err);
+      await refetch();
+    }
+  };
+
+  const toggleHospitalBag = async (id: string, current: boolean) => {
+    try {
+      const updated = await updateEssentialItem(userId, id, {
+        is_hospital_bag: !current,
+      });
+      upsertItemInState(updated);
+    } catch (err) {
+      console.error("Failed to toggle hospital bag flag", err);
       await refetch();
     }
   };
@@ -367,6 +386,9 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         // Items the parents type in default to must-have (committed).
         // AI suggestions land in the shortlist for consideration.
         is_must_have: true,
+        // Adding from the Hospital Bag view should flag it so it shows up
+        // there immediately, rather than only on the main Essentials list.
+        is_hospital_bag: filterMode === "hospital_bag",
         estimated_cost: Number.isFinite(costNum) ? costNum : null,
         purchase_url: newUrl.trim() || null,
         source: "parent",
@@ -405,6 +427,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         // AI suggestions land on the shortlist (nice-to-have); parents
         // promote with ☆ once decided.
         is_must_have: false,
+        is_hospital_bag: filterMode === "hospital_bag",
         estimated_cost: s.estimated_cost ?? null,
         notes: s.description ?? null,
         source: "ai",
@@ -426,6 +449,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         category: s.category ?? "Sleep",
         status: "skipped",
         is_must_have: false,
+        is_hospital_bag: filterMode === "hospital_bag",
         estimated_cost: s.estimated_cost ?? null,
         notes: s.description ?? null,
         source: "ai",
@@ -621,6 +645,14 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
           >
             ✎
           </button>
+          <button
+            type="button"
+            className={`icon-btn ${item.is_hospital_bag ? "icon-btn-active" : ""}`}
+            onClick={() => void toggleHospitalBag(item.id, item.is_hospital_bag)}
+            title={item.is_hospital_bag ? "Remove from hospital bag" : "Add to hospital bag"}
+          >
+            🧳
+          </button>
           {item.status !== "skipped" && item.is_must_have && (
             <button
               type="button"
@@ -669,10 +701,13 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
       <section className="names-card essentials-items-section">
         <div className="names-card-header">
           <div className="essentials-header-text">
-            <h2 className="names-section-title">Your essentials list</h2>
+            <h2 className="names-section-title">
+              {filterMode === "hospital_bag" ? "Your hospital bag list" : "Your essentials list"}
+            </h2>
             <p className="names-section-hint">
-              Track what you need, what you&apos;ve bought, and what you&apos;ve decided
-              to skip. Estimated costs are in £ — rough numbers help you triage.
+              {filterMode === "hospital_bag"
+                ? "Items you'll want packed and ready for the day of birth. Flag any essential with 🧳 to add it here."
+                : "Track what you need, what you've bought, and what you've decided to skip. Estimated costs are in £ — rough numbers help you triage."}
             </p>
           </div>
           <div className="essentials-summary">
@@ -693,7 +728,9 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
           <div className="names-empty">Loading your list…</div>
         ) : mainListItems.length === 0 && shortlistItems.length === 0 ? (
           <div className="names-empty">
-            No items yet. Add one below or get AI suggestions.
+            {filterMode === "hospital_bag"
+              ? "No items flagged yet. Mark items from your Baby Essentials list with 🧳, or add one below."
+              : "No items yet. Add one below or get AI suggestions."}
           </div>
         ) : (
           <>

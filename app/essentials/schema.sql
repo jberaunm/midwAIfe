@@ -23,6 +23,7 @@ CREATE TABLE public.essential_items (
   status          text NOT NULL
     CHECK (status = ANY (ARRAY['needed'::text, 'bought'::text, 'skipped'::text])),
   is_must_have    boolean NOT NULL DEFAULT false,
+  is_hospital_bag boolean NOT NULL DEFAULT false,
   estimated_cost  numeric(8, 2),
   purchase_url    text,
   notes           text,

@@ -2026,6 +2026,11 @@ body {
   background-color: #FEF2F2;
 }
 
+.icon-btn-active {
+  border-color: var(--primary-color);
+  background-color: var(--primary-light, #EEF2FF);
+}
+
 .suggestions-header {
   display: flex;
   justify-content: space-between;
