@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 from db.pg_database import execute_query
 from essentials.service import essentials_service
-from essentials.models import EssentialItemCreate, EssentialPreferencesUpsert
+from essentials.models import EssentialItemCreate, EssentialItemUpdate, EssentialPreferencesUpsert
 
 # In-memory cache for recent suggestions (keyed by user_id)
 _suggestions_cache: Dict[str, Dict[str, Any]] = {}
@@ -24,6 +24,7 @@ VALID_CATEGORIES = (
     "Gear", "Health", "Travel", "Nursery",
 )
 VALID_SECONDHAND = ("yes", "no", "no_preference")
+VALID_HOSPITAL_BAG_SECTIONS = ("labour_ward", "postnatal_ward", "partner_bag")
 
 
 def _get_user_id() -> str:
@@ -74,9 +75,10 @@ def get_essentials_items_tool(status: Optional[str] = None) -> Dict[str, Any]:
 
     Returns:
         Dictionary with:
-        - items: list of {name, category, status, is_must_have, estimated_cost, purchase_url, notes}
+        - items: list of {name, category, status, is_must_have, is_hospital_bag, estimated_cost, purchase_url, notes}
         - must_have_count: number of must-have items
         - shortlist_count: number of shortlist items
+        - hospital_bag_count: number of items flagged for the hospital bag
         - total_estimated_cost: sum of all estimated costs
     """
     user_id = _get_user_id()
@@ -84,6 +86,7 @@ def get_essentials_items_tool(status: Optional[str] = None) -> Dict[str, Any]:
 
     must_have = [i for i in items if i.is_must_have]
     shortlist = [i for i in items if not i.is_must_have]
+    hospital_bag = [i for i in items if i.is_hospital_bag]
     total_cost = sum(i.estimated_cost or 0 for i in items)
 
     return {
@@ -93,6 +96,8 @@ def get_essentials_items_tool(status: Optional[str] = None) -> Dict[str, Any]:
                 "category": i.category,
                 "status": i.status,
                 "is_must_have": i.is_must_have,
+                "is_hospital_bag": i.is_hospital_bag,
+                "hospital_bag_section": i.hospital_bag_section,
                 "estimated_cost": float(i.estimated_cost) if i.estimated_cost else None,
                 "purchase_url": i.purchase_url,
                 "notes": i.notes,
@@ -101,6 +106,7 @@ def get_essentials_items_tool(status: Optional[str] = None) -> Dict[str, Any]:
         ],
         "must_have_count": len(must_have),
         "shortlist_count": len(shortlist),
+        "hospital_bag_count": len(hospital_bag),
         "total_estimated_cost": float(total_cost),
     }
 
@@ -162,6 +168,8 @@ def add_essentials_item_tool(
     category: str,
     status: str = "needed",
     is_must_have: bool = True,
+    is_hospital_bag: bool = False,
+    hospital_bag_section: Optional[str] = None,
     estimated_cost: Optional[float] = None,
     purchase_url: Optional[str] = None,
     notes: Optional[str] = None,
@@ -174,11 +182,30 @@ def add_essentials_item_tool(
     Use this tool when the parents mention an item they want to add,
     e.g. "Add a car seat to my list" or "We need a travel cot".
 
+    IMPORTANT: if the parents ask to add something to their **hospital bag**
+    (or say it's needed for the day of birth, e.g. "add nappies to the
+    hospital bag"), you MUST pass is_hospital_bag=True. Otherwise the item
+    only shows up in the main Baby Essentials list, not the Hospital Bag
+    list, even if that's what they asked for. An item can be both a
+    must-have AND a hospital-bag item at the same time (e.g. car seat).
+
+    The Hospital Bag list is further split into three physical bags. If the
+    parents' phrasing implies one — "for labour", "for when she's on the
+    ward", "for me"/"for the birth partner" — also pass hospital_bag_section:
+    'labour_ward' (items for the mother during labour itself), 'postnatal_ward'
+    (items for mum and baby once moved to recovery), or 'partner_bag' (items
+    for the birth partner). Leave it unset if it's ambiguous — the parents
+    can sort it later.
+
     Args:
         name: The item name (required).
         category: One of Sleep, Feeding, Clothing, Bath, Gear, Health, Travel, Nursery
         status: 'needed' (default) | 'bought' | 'skipped'
         is_must_have: true (default) | false (shortlist)
+        is_hospital_bag: true if this item belongs in the Hospital Bag list
+            (day-of-birth items). false (default) otherwise.
+        hospital_bag_section: 'labour_ward' | 'postnatal_ward' | 'partner_bag'
+            (optional — only meaningful when is_hospital_bag=True)
         estimated_cost: Optional cost in GBP
         purchase_url: Optional link where to buy
         notes: Optional notes about why they need it or special requirements
@@ -202,6 +229,13 @@ def add_essentials_item_tool(
             + ", ".join(VALID_STATUSES),
         }
 
+    if hospital_bag_section is not None and hospital_bag_section not in VALID_HOSPITAL_BAG_SECTIONS:
+        return {
+            "success": False,
+            "error": f"Invalid hospital_bag_section '{hospital_bag_section}'. Must be one of: "
+            + ", ".join(VALID_HOSPITAL_BAG_SECTIONS),
+        }
+
     if not name or not name.strip():
         return {"success": False, "error": "Item name cannot be empty."}
 
@@ -212,6 +246,8 @@ def add_essentials_item_tool(
             category=category,
             status=status,
             is_must_have=is_must_have,
+            is_hospital_bag=is_hospital_bag,
+            hospital_bag_section=hospital_bag_section,
             estimated_cost=estimated_cost,
             purchase_url=purchase_url,
             notes=notes,
@@ -225,6 +261,8 @@ def add_essentials_item_tool(
         "category": item.category,
         "status": item.status,
         "is_must_have": item.is_must_have,
+        "is_hospital_bag": item.is_hospital_bag,
+        "hospital_bag_section": item.hospital_bag_section,
         "estimated_cost": float(item.estimated_cost) if item.estimated_cost else None,
     }
 
@@ -272,6 +310,67 @@ def update_essentials_item_status_tool(
         "success": True,
         "name": updated.name,
         "status": updated.status,
+    }
+
+
+def set_essentials_item_hospital_bag_tool(
+    item_name: str,
+    is_hospital_bag: bool,
+    hospital_bag_section: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Flag or unflag an existing essentials item for the Hospital Bag list,
+    and optionally assign it to one of the three physical bags.
+
+    Use this tool when the parents ask to move an existing item into (or
+    out of) their hospital bag, e.g. "add the car seat to the hospital bag"
+    or "the going-home outfit isn't in the hospital bag anymore", or to
+    reassign which bag an existing hospital-bag item belongs to, e.g.
+    "move the going-home outfit to the postnatal ward bag". If the
+    item doesn't exist yet, use add_essentials_item_tool instead with
+    is_hospital_bag=True.
+
+    Args:
+        item_name: The name of the item to update (case-insensitive lookup)
+        is_hospital_bag: true to add it to the Hospital Bag list, false to remove it
+        hospital_bag_section: 'labour_ward' | 'postnatal_ward' | 'partner_bag'
+            (optional). Pass this to assign/reassign which of the three bags
+            the item belongs to. Omit to leave the current assignment as-is;
+            it's ignored if is_hospital_bag=False.
+
+    Returns:
+        Dictionary with the updated item, or error if not found.
+    """
+    user_id = _get_user_id()
+
+    if hospital_bag_section is not None and hospital_bag_section not in VALID_HOSPITAL_BAG_SECTIONS:
+        return {
+            "success": False,
+            "error": f"Invalid hospital_bag_section '{hospital_bag_section}'. Must be one of: "
+            + ", ".join(VALID_HOSPITAL_BAG_SECTIONS),
+        }
+
+    item = essentials_service.find_by_name(user_id, item_name)
+    if not item:
+        return {
+            "success": False,
+            "error": f"Item '{item_name}' not found in your essentials list.",
+        }
+
+    updated = essentials_service.update_item(
+        user_id,
+        item.id,
+        EssentialItemUpdate(
+            is_hospital_bag=is_hospital_bag,
+            hospital_bag_section=hospital_bag_section,
+        ),
+    )
+
+    return {
+        "success": True,
+        "name": updated.name,
+        "is_hospital_bag": updated.is_hospital_bag,
+        "hospital_bag_section": updated.hospital_bag_section,
     }
 
 
@@ -394,6 +493,7 @@ def create_essentials_tools():
         FunctionTool(func=update_essentials_preferences_tool),
         FunctionTool(func=add_essentials_item_tool),
         FunctionTool(func=update_essentials_item_status_tool),
+        FunctionTool(func=set_essentials_item_hospital_bag_tool),
         # AI Suggestions
         FunctionTool(func=suggest_essentials_tool),
         FunctionTool(func=save_essentials_suggestions_tool),

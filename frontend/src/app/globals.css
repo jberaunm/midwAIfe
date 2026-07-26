@@ -2673,6 +2673,53 @@ body {
   border-bottom-color: var(--primary-color);
 }
 
+.hospital-bag-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0 0 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.hospital-bag-tab {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border-color);
+  background: var(--white);
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.hospital-bag-tab:hover {
+  color: var(--primary-color);
+  background-color: var(--accent-color);
+}
+
+.hospital-bag-tab.active {
+  color: var(--white);
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.bag-section-select {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.bag-section-select-compact {
+  width: 30px;
+  height: 30px;
+  padding: 0 0.15rem;
+  text-align: center;
+  text-align-last: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
 @media (max-width: 768px) {
   .names-layout {
     grid-template-columns: 1fr;

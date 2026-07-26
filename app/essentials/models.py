@@ -9,6 +9,7 @@ CategoryType = Literal[
 StatusType = Literal["needed", "bought", "skipped"]
 SourceType = Literal["parent", "ai"]
 SecondhandType = Literal["yes", "no", "no_preference"]
+HospitalBagSectionType = Literal["labour_ward", "postnatal_ward", "partner_bag"]
 
 
 class EssentialPreferences(BaseModel):
@@ -31,6 +32,7 @@ class EssentialItem(BaseModel):
     status: StatusType
     is_must_have: bool
     is_hospital_bag: bool
+    hospital_bag_section: Optional[HospitalBagSectionType] = None
     estimated_cost: Optional[float] = None
     purchase_url: Optional[str] = None
     notes: Optional[str] = None
@@ -45,6 +47,7 @@ class EssentialItemCreate(BaseModel):
     status: StatusType = "needed"
     is_must_have: bool = False
     is_hospital_bag: bool = False
+    hospital_bag_section: Optional[HospitalBagSectionType] = None
     estimated_cost: Optional[float] = None
     purchase_url: Optional[str] = None
     notes: Optional[str] = None
@@ -58,6 +61,7 @@ class EssentialItemUpdate(BaseModel):
     status: Optional[StatusType] = None
     is_must_have: Optional[bool] = None
     is_hospital_bag: Optional[bool] = None
+    hospital_bag_section: Optional[HospitalBagSectionType] = None
     estimated_cost: Optional[float] = None
     purchase_url: Optional[str] = None
     notes: Optional[str] = None
@@ -66,6 +70,7 @@ class EssentialItemUpdate(BaseModel):
     clear_estimated_cost: bool = False
     clear_purchase_url: bool = False
     clear_notes: bool = False
+    clear_hospital_bag_section: bool = False
 
 
 class EssentialSuggestionItem(BaseModel):

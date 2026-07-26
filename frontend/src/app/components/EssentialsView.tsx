@@ -6,6 +6,7 @@ import {
   EssentialItem,
   EssentialSecondhand,
   EssentialStatus,
+  HospitalBagSection,
   addEssentialItem,
   deleteEssentialItem,
   getEssentialItems,
@@ -48,6 +49,32 @@ interface Suggestion {
   description?: string | null;
 }
 
+const BAG_SECTIONS: readonly {
+  key: HospitalBagSection;
+  emoji: string;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    key: "labour_ward",
+    emoji: "👜",
+    label: "Labour Ward",
+    hint: "Keep this bag small and easily accessible. Everything she needs during the main event.",
+  },
+  {
+    key: "postnatal_ward",
+    emoji: "👶",
+    label: "Postnatal Ward",
+    hint: "Stays packed in the background until the baby arrives and she's moved to the recovery ward.",
+  },
+  {
+    key: "partner_bag",
+    emoji: "🎒",
+    label: "Partner Bag",
+    hint: "Your own kit as the logistics manager and support system for a long stay.",
+  },
+] as const;
+
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const PREFS_NOTES_PLACEHOLDER =
@@ -78,6 +105,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
   const [items, setItems] = useState<EssentialItem[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSkipped, setShowSkipped] = useState(false);
+  const [activeBagTab, setActiveBagTab] = useState<"all" | HospitalBagSection>("all");
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -87,6 +115,15 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
   const [newCategory, setNewCategory] = useState<EssentialCategory>("Sleep");
   const [newCost, setNewCost] = useState("");
   const [newUrl, setNewUrl] = useState("");
+  const [newBagSection, setNewBagSection] = useState<HospitalBagSection | "">("");
+
+  // Keep the add-row bag picker in sync with whichever bag tab is active,
+  // while still letting the parent override it before hitting Add.
+  useEffect(() => {
+    if (filterMode === "hospital_bag") {
+      setNewBagSection(activeBagTab === "all" ? "" : activeBagTab);
+    }
+  }, [activeBagTab, filterMode]);
 
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
@@ -196,10 +233,16 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
       : items.filter((i) => !i.is_hospital_bag);
   }, [items, filterMode]);
 
-  const skippedCount = visibleItems.filter((i) => i.status === "skipped").length;
+  // Within the Hospital Bag view, further narrow to the active bag tab.
+  const bagTabItems = useMemo(() => {
+    if (filterMode !== "hospital_bag" || activeBagTab === "all") return visibleItems;
+    return visibleItems.filter((i) => i.hospital_bag_section === activeBagTab);
+  }, [visibleItems, filterMode, activeBagTab]);
+
+  const skippedCount = bagTabItems.filter((i) => i.status === "skipped").length;
 
   const mainListItems = useMemo(() => {
-    const visible = visibleItems.filter(
+    const visible = bagTabItems.filter(
       (i) =>
         (i.is_must_have && i.status !== "skipped") ||
         (i.status === "skipped" && showSkipped),
@@ -214,10 +257,10 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
       }
       return a.name.localeCompare(b.name);
     });
-  }, [visibleItems, showSkipped]);
+  }, [bagTabItems, showSkipped]);
 
   const shortlistItems = useMemo(() => {
-    return visibleItems
+    return bagTabItems
       .filter((i) => !i.is_must_have && i.status !== "skipped")
       .sort((a, b) => {
         if (a.category !== b.category) {
@@ -225,17 +268,29 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         }
         return a.name.localeCompare(b.name);
       });
-  }, [visibleItems]);
+  }, [bagTabItems]);
+
+  // Hospital Bag view renders one flat list per bag instead of the
+  // must-have/shortlist split used by the main Essentials view.
+  const hospitalBagFlatItems = useMemo(() => {
+    const visible = bagTabItems.filter(
+      (i) => i.status !== "skipped" || showSkipped,
+    );
+    // Plain alphabetical order (not grouped by status/category) — this is a
+    // packing checklist, so finding a specific item by name matters more
+    // than clustering by status.
+    return [...visible].sort((a, b) => a.name.localeCompare(b.name));
+  }, [bagTabItems, showSkipped]);
 
   const totals = useMemo(() => {
-    const needed = visibleItems.filter(
-      (i) => i.is_must_have && i.status === "needed",
+    const needed = bagTabItems.filter((i) =>
+      filterMode === "hospital_bag" ? i.status === "needed" : (i.is_must_have && i.status === "needed"),
     );
     return {
       neededCount: needed.length,
       neededCost: needed.reduce((acc, i) => acc + (i.estimated_cost ?? 0), 0),
     };
-  }, [visibleItems]);
+  }, [bagTabItems, filterMode]);
 
   // ----- Helpers -----
 
@@ -289,10 +344,27 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
     try {
       const updated = await updateEssentialItem(userId, id, {
         is_hospital_bag: !current,
+        ...(current ? { clear_hospital_bag_section: true } : {}),
       });
       upsertItemInState(updated);
     } catch (err) {
       console.error("Failed to toggle hospital bag flag", err);
+      await refetch();
+    }
+  };
+
+  const setBagSection = async (id: string, section: HospitalBagSection | "") => {
+    try {
+      const updated = await updateEssentialItem(
+        userId,
+        id,
+        section
+          ? { hospital_bag_section: section }
+          : { clear_hospital_bag_section: true },
+      );
+      upsertItemInState(updated);
+    } catch (err) {
+      console.error("Failed to set bag section", err);
       await refetch();
     }
   };
@@ -389,6 +461,7 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         // Adding from the Hospital Bag view should flag it so it shows up
         // there immediately, rather than only on the main Essentials list.
         is_hospital_bag: filterMode === "hospital_bag",
+        hospital_bag_section: filterMode === "hospital_bag" && newBagSection ? newBagSection : null,
         estimated_cost: Number.isFinite(costNum) ? costNum : null,
         purchase_url: newUrl.trim() || null,
         source: "parent",
@@ -428,6 +501,8 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         // promote with ☆ once decided.
         is_must_have: false,
         is_hospital_bag: filterMode === "hospital_bag",
+        hospital_bag_section:
+          filterMode === "hospital_bag" && activeBagTab !== "all" ? activeBagTab : null,
         estimated_cost: s.estimated_cost ?? null,
         notes: s.description ?? null,
         source: "ai",
@@ -450,6 +525,8 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
         status: "skipped",
         is_must_have: false,
         is_hospital_bag: filterMode === "hospital_bag",
+        hospital_bag_section:
+          filterMode === "hospital_bag" && activeBagTab !== "all" ? activeBagTab : null,
         estimated_cost: s.estimated_cost ?? null,
         notes: s.description ?? null,
         source: "ai",
@@ -653,7 +730,28 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
           >
             🧳
           </button>
-          {item.status !== "skipped" && item.is_must_have && (
+          {filterMode === "hospital_bag" && item.is_hospital_bag && (
+            <select
+              className="icon-btn bag-section-select-compact"
+              value={item.hospital_bag_section ?? ""}
+              onChange={(e) =>
+                void setBagSection(item.id, e.target.value as HospitalBagSection | "")
+              }
+              title={
+                item.hospital_bag_section
+                  ? `Bag: ${BAG_SECTIONS.find((b) => b.key === item.hospital_bag_section)?.label}`
+                  : "Unsorted — assign to a bag"
+              }
+            >
+              <option value="">—</option>
+              {BAG_SECTIONS.map((b) => (
+                <option key={b.key} value={b.key}>
+                  {b.emoji}
+                </option>
+              ))}
+            </select>
+          )}
+          {filterMode !== "hospital_bag" && item.status !== "skipped" && item.is_must_have && (
             <button
               type="button"
               className="icon-btn"
@@ -706,7 +804,9 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
             </h2>
             <p className="names-section-hint">
               {filterMode === "hospital_bag"
-                ? "Items you'll want packed and ready for the day of birth. Flag any essential with 🧳 to add it here."
+                ? activeBagTab === "all"
+                  ? "Items you'll want packed and ready for the day of birth. Flag any essential with 🧳 to add it here."
+                  : BAG_SECTIONS.find((b) => b.key === activeBagTab)?.hint
                 : "Track what you need, what you've bought, and what you've decided to skip. Estimated costs are in £ — rough numbers help you triage."}
             </p>
           </div>
@@ -724,13 +824,49 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
           </div>
         </div>
 
+        {filterMode === "hospital_bag" && (
+          <div className="hospital-bag-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeBagTab === "all"}
+              className={`hospital-bag-tab ${activeBagTab === "all" ? "active" : ""}`}
+              onClick={() => setActiveBagTab("all")}
+            >
+              All Items
+            </button>
+            {BAG_SECTIONS.map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                role="tab"
+                aria-selected={activeBagTab === b.key}
+                className={`hospital-bag-tab ${activeBagTab === b.key ? "active" : ""}`}
+                onClick={() => setActiveBagTab(b.key)}
+              >
+                {b.emoji} {b.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {!loaded ? (
           <div className="names-empty">Loading your list…</div>
+        ) : filterMode === "hospital_bag" ? (
+          hospitalBagFlatItems.length === 0 ? (
+            <div className="names-empty">
+              {activeBagTab === "all"
+                ? "No items flagged yet. Mark items from your Baby Essentials list with 🧳, or add one below."
+                : "No items in this bag yet. Assign one with the bag picker, or add one below."}
+            </div>
+          ) : (
+            <div className="essentials-list">
+              {hospitalBagFlatItems.map(renderItemCard)}
+            </div>
+          )
         ) : mainListItems.length === 0 && shortlistItems.length === 0 ? (
           <div className="names-empty">
-            {filterMode === "hospital_bag"
-              ? "No items flagged yet. Mark items from your Baby Essentials list with 🧳, or add one below."
-              : "No items yet. Add one below or get AI suggestions."}
+            No items yet. Add one below or get AI suggestions.
           </div>
         ) : (
           <>
@@ -800,6 +936,21 @@ export default function EssentialsView({ userId = DEFAULT_USER_ID, onSuggestEsse
               </option>
             ))}
           </select>
+          {filterMode === "hospital_bag" && (
+            <select
+              className="essentials-add-category bag-section-select"
+              value={newBagSection}
+              onChange={(e) => setNewBagSection(e.target.value as HospitalBagSection | "")}
+              disabled={!loaded}
+            >
+              <option value="">Unsorted</option>
+              {BAG_SECTIONS.map((b) => (
+                <option key={b.key} value={b.key}>
+                  {b.emoji} {b.label}
+                </option>
+              ))}
+            </select>
+          )}
           <div className="essentials-add-cost-wrap">
             <span className="essentials-add-cost-prefix">£</span>
             <input

@@ -58,7 +58,7 @@ class EssentialsService:
         if status:
             query = """
                 SELECT id, user_id, name, category, status, is_must_have,
-                       is_hospital_bag, estimated_cost, purchase_url, notes,
+                       is_hospital_bag, hospital_bag_section, estimated_cost, purchase_url, notes,
                        source, created_at, updated_at
                 FROM essential_items
                 WHERE user_id = %s AND status = %s
@@ -68,7 +68,7 @@ class EssentialsService:
         else:
             query = """
                 SELECT id, user_id, name, category, status, is_must_have,
-                       is_hospital_bag, estimated_cost, purchase_url, notes,
+                       is_hospital_bag, hospital_bag_section, estimated_cost, purchase_url, notes,
                        source, created_at, updated_at
                 FROM essential_items
                 WHERE user_id = %s
@@ -82,7 +82,7 @@ class EssentialsService:
     def get_item(self, user_id: str, item_id: str) -> Optional[EssentialItem]:
         query = """
             SELECT id, user_id, name, category, status, is_must_have,
-                   is_hospital_bag, estimated_cost, purchase_url, notes,
+                   is_hospital_bag, hospital_bag_section, estimated_cost, purchase_url, notes,
                    source, created_at, updated_at
             FROM essential_items
             WHERE id = %s AND user_id = %s
@@ -94,7 +94,7 @@ class EssentialsService:
         """Case-insensitive lookup by name."""
         query = """
             SELECT id, user_id, name, category, status, is_must_have,
-                   is_hospital_bag, estimated_cost, purchase_url, notes,
+                   is_hospital_bag, hospital_bag_section, estimated_cost, purchase_url, notes,
                    source, created_at, updated_at
             FROM essential_items
             WHERE user_id = %s AND LOWER(name) = LOWER(%s)
@@ -119,6 +119,7 @@ class EssentialsService:
                 status=data.status,
                 is_must_have=data.is_must_have,
                 is_hospital_bag=data.is_hospital_bag,
+                hospital_bag_section=data.hospital_bag_section,
                 estimated_cost=data.estimated_cost,
                 purchase_url=data.purchase_url,
                 notes=data.notes,
@@ -130,10 +131,10 @@ class EssentialsService:
         query = """
             INSERT INTO essential_items
                 (user_id, name, category, status, is_must_have, is_hospital_bag,
-                 estimated_cost, purchase_url, notes, source)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 hospital_bag_section, estimated_cost, purchase_url, notes, source)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id, user_id, name, category, status, is_must_have,
-                      is_hospital_bag, estimated_cost, purchase_url, notes,
+                      is_hospital_bag, hospital_bag_section, estimated_cost, purchase_url, notes,
                       source, created_at, updated_at
         """
         result = execute_query(
@@ -145,6 +146,7 @@ class EssentialsService:
                 data.status,
                 data.is_must_have,
                 data.is_hospital_bag,
+                data.hospital_bag_section,
                 data.estimated_cost,
                 data.purchase_url,
                 data.notes,
@@ -181,6 +183,12 @@ class EssentialsService:
             fields.append("is_hospital_bag = %s")
             params.append(data.is_hospital_bag)
 
+        if data.clear_hospital_bag_section:
+            fields.append("hospital_bag_section = NULL")
+        elif data.hospital_bag_section is not None:
+            fields.append("hospital_bag_section = %s")
+            params.append(data.hospital_bag_section)
+
         if data.clear_estimated_cost:
             fields.append("estimated_cost = NULL")
         elif data.estimated_cost is not None:
@@ -210,7 +218,7 @@ class EssentialsService:
             SET {", ".join(fields)}
             WHERE id = %s AND user_id = %s
             RETURNING id, user_id, name, category, status, is_must_have,
-                      is_hospital_bag, estimated_cost, purchase_url, notes,
+                      is_hospital_bag, hospital_bag_section, estimated_cost, purchase_url, notes,
                       source, created_at, updated_at
         """
         result = execute_query(query, tuple(params), fetch_one=True)
@@ -235,6 +243,7 @@ class EssentialsService:
             status=row["status"],
             is_must_have=row["is_must_have"],
             is_hospital_bag=row["is_hospital_bag"],
+            hospital_bag_section=row.get("hospital_bag_section"),
             estimated_cost=float(cost) if cost is not None else None,
             purchase_url=row.get("purchase_url"),
             notes=row.get("notes"),

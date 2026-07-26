@@ -409,6 +409,7 @@ export type EssentialCategory =
 export type EssentialStatus = 'needed' | 'bought' | 'skipped';
 export type EssentialSource = 'parent' | 'ai';
 export type EssentialSecondhand = 'yes' | 'no' | 'no_preference';
+export type HospitalBagSection = 'labour_ward' | 'postnatal_ward' | 'partner_bag';
 
 export interface EssentialPreferences {
   user_id: string;
@@ -430,6 +431,7 @@ export interface EssentialItem {
   status: EssentialStatus;
   is_must_have: boolean;
   is_hospital_bag: boolean;
+  hospital_bag_section: HospitalBagSection | null;
   estimated_cost: number | null;
   purchase_url: string | null;
   notes: string | null;
@@ -444,6 +446,7 @@ export interface EssentialItemCreate {
   status?: EssentialStatus;
   is_must_have?: boolean;
   is_hospital_bag?: boolean;
+  hospital_bag_section?: HospitalBagSection | null;
   estimated_cost?: number | null;
   purchase_url?: string | null;
   notes?: string | null;
@@ -456,6 +459,7 @@ export interface EssentialItemUpdate {
   status?: EssentialStatus;
   is_must_have?: boolean;
   is_hospital_bag?: boolean;
+  hospital_bag_section?: HospitalBagSection | null;
   estimated_cost?: number | null;
   purchase_url?: string | null;
   notes?: string | null;
@@ -464,6 +468,7 @@ export interface EssentialItemUpdate {
   clear_estimated_cost?: boolean;
   clear_purchase_url?: boolean;
   clear_notes?: boolean;
+  clear_hospital_bag_section?: boolean;
 }
 
 export async function getEssentialPreferences(
